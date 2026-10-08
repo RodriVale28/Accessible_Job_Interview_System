@@ -1,7 +1,9 @@
 # S1-X.1 GitHub Actions CI — owner: Thunder Oyebi
 # Save as .github/workflows/ci.yml in the repo.
 name: CI
+
 on: [push, pull_request]
+
 jobs:
   backend:
     runs-on: ubuntu-latest
