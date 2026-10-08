@@ -28,3 +28,10 @@ jobs:
     steps:
       # TODO: setup-node, npm ci, npm run lint, npm run build, npm test
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v7
+        with:
+           python-version: ">=20"
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+      - run: npm test
