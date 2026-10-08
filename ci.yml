@@ -9,6 +9,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python
+        with:
+           python-version: 3.11
+      - run: pip install -r requirements.txt
       # TODO: setup-python, pip install -r requirements.txt, run pytest
   frontend:
     runs-on: ubuntu-latest
