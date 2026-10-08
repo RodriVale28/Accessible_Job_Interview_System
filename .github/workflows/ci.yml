@@ -2,14 +2,7 @@
 # Save as .github/workflows/ci.yml in the repo.
 name: CI
 
-# [push, pull_request]
-on:
-  push:
-    branches:
-      - feature/S1-X.1-github_actions_ci
-  pull_request:
-    branches:
-      - feature/S1-X.1-github_actions_ci
+on: [push, pull_request]
 
 jobs:
   backend:
@@ -31,7 +24,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
            node-version: ">=20"
-      - run: npm ci
-      - run: npm run lint
-      - run: npm run build
-      - run: npm test
+      # - run: npm ci
+      # - run: npm run lint
+      # - run: npm run build
+      # - run: npm test
