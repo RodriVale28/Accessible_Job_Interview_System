@@ -2,7 +2,14 @@
 # Save as .github/workflows/ci.yml in the repo.
 name: CI
 
-on: [push, pull_request]
+# [push, pull_request]
+on:
+  push:
+    branches:
+      - feature/S1-X.1-github_actions_ci
+  pull_request:
+    branches:
+      - feature/S1-X.1-github_actions_ci
 
 jobs:
   backend:
