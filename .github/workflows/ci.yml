@@ -8,15 +8,15 @@ jobs:
   backend:
     runs-on: ubuntu-latest
     steps:
+      # TODO: setup-python, pip install -r requirements.txt, run pytest
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v7
         with:
            python-version: ">=3.11"
       - run: pip install -r requirements.txt
-      - run: echo "Hello, World!"
-      # TODO: setup-python, pip install -r requirements.txt, run pytest
+      - run: pip install -U pytest
   frontend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
       # TODO: setup-node, npm ci, npm run lint, npm run build, npm test
+      - uses: actions/checkout@v4
