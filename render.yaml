@@ -1,0 +1,34 @@
+# S1-4.3 Render Blueprint - owner: Valeria Rodriguez Hernandez
+# Render -> New -> Blueprint -> pick this repo. Creates two free web services:
+#   interview-studio-api  FastAPI backend (talks to Supabase PostgreSQL)
+#   interview-studio-web  Next.js front end (forwards /api/* to the backend)
+# Secrets are typed into Render once (sync: false) and never committed.
+services:
+  - type: web
+    name: interview-studio-api
+    runtime: python
+    plan: free
+    region: ohio
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: DATABASE_URL          # Supabase -> Connect -> Session pooler URI
+        sync: false
+
+  - type: web
+    name: interview-studio-web
+    runtime: node
+    plan: free
+    region: ohio
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_VERSION
+        value: 22.12.0
+      - key: API_ORIGIN            # the backend's public URL, e.g. https://interview-studio-api.onrender.com
+        sync: false
