@@ -1,16 +1,9 @@
 # S1-4.3 Render Blueprint - owner: Valeria Rodriguez Hernandez
 # Render -> New -> Blueprint -> pick this repo. Creates:
-#   interview-studio-db   free PostgreSQL database (DATABASE_URL is filled in automatically)
 #   interview-studio-api  FastAPI backend
 #   interview-studio-web  Next.js front end (forwards /api/* to the backend)
-# To use Supabase instead, replace DATABASE_URL on the api service with the Supabase Session pooler URI.
-databases:
-  - name: interview-studio-db
-    plan: free
-    region: ohio
-    databaseName: interview_studio
-    user: interview_studio
-
+# DATABASE_URL is the Supabase Session pooler URI, entered in the Render dashboard (never committed).
+# Render's free PostgreSQL is not used: it is deleted 30 days after creation.
 services:
   - type: web
     name: interview-studio-api
@@ -24,10 +17,8 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.7
-      - key: DATABASE_URL
-        fromDatabase:
-          name: interview-studio-db
-          property: connectionString
+      - key: DATABASE_URL         # Supabase -> Connect -> Session pooler URI
+        sync: false
 
   - type: web
     name: interview-studio-web
