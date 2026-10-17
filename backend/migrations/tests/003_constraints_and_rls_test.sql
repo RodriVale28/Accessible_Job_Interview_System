@@ -1,20 +1,17 @@
--- Tests for 002_rls_policies.sql (run on an empty test database after 001 and 002)
+-- Tests for 003_constraints_and_rls.sql (run on an empty test database after 001 and 003)
 -- User A and user B each have one session; each must see only their own rows.
 
-INSERT INTO auth.users (id) VALUES
-  ('00000000-0000-0000-0000-00000000000a'),
-  ('00000000-0000-0000-0000-00000000000b');
-
 INSERT INTO question_library (category, difficulty, prompt, expected_keywords) VALUES
-  ('Data Structures', 'Easy', 'What is a stack?', '{lifo,push,pop}');
+  ('Data Structures', 'Easy', 'What is a stack?', '{lifo,push,pop}'),
+  ('Algorithms', 'Easy', 'Explain binary search.', '{sorted,middle}');
 
 INSERT INTO sessions (user_id, job_title, difficulty, duration_min, total_questions) VALUES
   ('00000000-0000-0000-0000-00000000000a', 'Junior Developer', 'Easy', 15, 1),
   ('00000000-0000-0000-0000-00000000000b', 'Data Analyst', 'Easy', 15, 1);
 
 INSERT INTO session_questions (session_id, question_id, q_index) VALUES (1, 1, 1), (2, 1, 1);
-INSERT INTO responses (session_question_id, answer_text) VALUES (1, 'A answer'), (2, 'B answer');
-INSERT INTO feedback (session_question_id, score, is_correct) VALUES (1, 80, true), (2, 20, false);
+INSERT INTO responses (session_id, question_id, answer_text) VALUES (1, 1, 'A answer'), (2, 1, 'B answer');
+INSERT INTO feedback (session_id, question_id, response_id, score, correct) VALUES (1, 1, 1, 80, true), (2, 1, 2, 20, false);
 
 CREATE FUNCTION expect_rows(label TEXT, stmt TEXT, expected INT) RETURNS void AS $$
 DECLARE n INT;
@@ -31,6 +28,12 @@ EXCEPTION WHEN OTHERS THEN
   IF SQLSTATE = 'P0001' THEN RAISE; END IF;
 END $$ LANGUAGE plpgsql;
 
+-- Constraints
+SELECT expect_fail($q$UPDATE sessions SET status = 'completed' WHERE id = 1$q$);
+SELECT expect_fail($q$UPDATE sessions SET completed_at = now() WHERE id = 1$q$);
+UPDATE sessions SET status = 'completed', completed_at = now() WHERE id = 1;
+SELECT expect_fail($q$INSERT INTO session_questions (session_id, question_id, q_index) VALUES (2, 2, 0)$q$);
+
 -- Logged in as user A
 SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);
@@ -42,8 +45,8 @@ SELECT expect_rows('A sees no B response', $q$SELECT 1 FROM responses WHERE answ
 SELECT expect_rows('A feedback', 'SELECT 1 FROM feedback WHERE score = 80', 1);
 SELECT expect_rows('A sees no B feedback', 'SELECT 1 FROM feedback WHERE score = 20', 0);
 SELECT expect_rows('library is server-only', 'SELECT 1 FROM question_library', 0);
-SELECT expect_fail($q$INSERT INTO sessions (user_id, job_title, difficulty, duration_min, total_questions) VALUES ('00000000-0000-0000-0000-00000000000a', 'x', 'Easy', 15, 1)$q$);
-SELECT expect_fail($q$INSERT INTO feedback (session_question_id, score, is_correct) VALUES (1, 100, true)$q$);
+SELECT expect_fail($q$INSERT INTO sessions (user_id, job_title, difficulty, duration_min, total_questions) VALUES ('00000000-0000-0000-0000-00000000000a', 'xx', 'Easy', 15, 1)$q$);
+SELECT expect_fail($q$INSERT INTO feedback (session_id, question_id, score, correct) VALUES (1, 1, 100, true)$q$);
 UPDATE sessions SET job_title = 'hacked';
 DELETE FROM responses;
 
