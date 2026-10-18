@@ -21,15 +21,14 @@ CREATE TABLE IF NOT EXISTS sessions (
     overall_score   INT    CHECK (overall_score BETWEEN 0 AND 100),
     correct_count   INT    NOT NULL DEFAULT 0,
     started_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-    completed_at    TIMESTAMPTZ,
-    CHECK ((status = 'completed') = (completed_at IS NOT NULL))
+    completed_at    TIMESTAMPTZ
 );
 
 CREATE TABLE IF NOT EXISTS session_questions (
     id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     session_id  BIGINT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
     question_id INT    NOT NULL REFERENCES question_library(id),
-    q_index     INT    NOT NULL CHECK (q_index > 0),
+    q_index     INT    NOT NULL,
     asked_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (session_id, q_index),
     UNIQUE (session_id, question_id)
@@ -60,6 +59,18 @@ CREATE TABLE IF NOT EXISTS feedback (
     created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (session_id, question_id)
 );
+
+-- Added separately so they also apply to tables created by an earlier version.
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'sessions_completed_check') THEN
+        ALTER TABLE sessions ADD CONSTRAINT sessions_completed_check
+            CHECK ((status = 'completed') = (completed_at IS NOT NULL));
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'session_questions_q_index_check') THEN
+        ALTER TABLE session_questions ADD CONSTRAINT session_questions_q_index_check CHECK (q_index > 0);
+    END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_sessions_user_started  ON sessions(user_id, started_at DESC);
 CREATE INDEX IF NOT EXISTS idx_session_questions_sess ON session_questions(session_id);
