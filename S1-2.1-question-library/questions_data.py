@@ -1,3 +1,9 @@
+# ==========================================================================
+# Interview Studio - Sprint 1, Task S1-2.1: 50-question technical library + seed script
+# Story: US-2 Receive Interview Questions
+# Author: Riket Sanketkumar Patel (GitHub: Riketpatel25)
+# This file: the 50 technical questions (category, difficulty, prompt, expected_keywords).
+# ==========================================================================
 """
 S1-2.1 — Sprint 1 technical question library (source of truth).
 Each entry: (category, difficulty, prompt, expected_keywords)
