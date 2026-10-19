@@ -39,3 +39,26 @@ test('Sprint 1 critical path', async ({ page }) => {
   await page.getByRole('button', { name: 'Retry with same setup' }).click();
   await expect(page.getByText('Question 1 of 5')).toBeVisible();
 });
+
+test('setup shows accessible errors for missing fields', async ({ page }) => {
+  await page.goto('/setup');
+  await page.getByRole('button', { name: 'Begin Interview' }).click();
+  await expect(page.getByRole('alert').first()).toContainText('Please fix 3 fields');
+  await expect(page.getByLabel('Job title')).toBeFocused();
+  await expect(page.getByLabel('Job title')).toHaveAttribute('aria-invalid', 'true');
+  await expect(page.getByText('Choose a difficulty')).toBeVisible();
+});
+
+test('empty answer asks the user to type or skip', async ({ page }) => {
+  await page.goto('/setup');
+  await page.getByLabel('Job title').fill('Backend Developer');
+  await page.getByRole('button', { name: /^Medium/ }).click();
+  await page.getByRole('button', { name: /^30 min/ }).click();
+  await page.getByRole('button', { name: 'Begin Interview' }).click();
+  await expect(page.getByText('Question 1 of 8')).toBeVisible();
+  await page.getByRole('button', { name: 'Send answer' }).click();
+  await expect(page.locator('p.field-err[role=alert]')).toContainText('Skip question');
+  await page.getByRole('button', { name: 'End now' }).click();
+  await expect(page.getByRole('heading', { name: 'Overall score: 0 out of 100' })).toBeVisible();
+  await expect(page.getByText('Not answered ·')).toBeVisible();
+});
