@@ -13,7 +13,6 @@ get_session_repository() and get_question_service() (or override them in tests).
 """
 from enum import Enum
 from typing import Dict, Optional, Protocol, Union
-from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -21,7 +20,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 router = APIRouter()
 
 # Session length (minutes) -> number of questions. Same values as the prototype's config.py.
-QUESTIONS_BY_LENGTH: Dict[int, int] = {15: 4, 30: 6, 45: 8}
+QUESTIONS_BY_LENGTH: Dict[int, int] = {15: 5, 30: 8, 45: 10}
 
 
 # --------------------------------------------------------------------------
@@ -72,7 +71,7 @@ class Question(BaseModel):
 class SessionStartResponse(BaseModel):
     """Response body: everything the front end needs to start the interview."""
 
-    session_id: str
+    session_id: int
     job_title: str
     interview_type: InterviewType
     difficulty: Difficulty
@@ -88,14 +87,14 @@ class SessionStartResponse(BaseModel):
 class SessionRepository(Protocol):
     """Implemented by Sublime (S1-4.2). Returns the new session's id."""
 
-    def create_session(self, config: SessionCreate, total_questions: int) -> str: ...
+    def create_session(self, config: SessionCreate, total_questions: int) -> int: ...
 
 
 class QuestionService(Protocol):
     """Implemented by Moshood (S1-2.2). Returns None if no question is available."""
 
     def get_first_question(
-        self, session_id: str, config: SessionCreate
+        self, session_id: int, config: SessionCreate
     ) -> Optional[Question]: ...
 
 
@@ -160,21 +159,25 @@ def start_session(
 # --------------------------------------------------------------------------
 class InMemorySessionRepository:
     def __init__(self) -> None:
-        self.sessions: Dict[str, dict] = {}
+        self.sessions: Dict[int, dict] = {}
+        self.next_id = 1
 
-    def create_session(self, config: SessionCreate, total_questions: int) -> str:
-        session_id = str(uuid4())
+    def create_session(self, config: SessionCreate, total_questions: int) -> int:
+        session_id = self.next_id
+        self.next_id += 1
+
         self.sessions[session_id] = {
             **config.model_dump(mode="json"),
             "total_questions": total_questions,
             "status": "in_progress",
         }
+
         return session_id
 
 
 class StubQuestionService:
     def get_first_question(
-        self, session_id: str, config: SessionCreate
+        self, session_id: int, config: SessionCreate
     ) -> Optional[Question]:
         return Question(
             id=1,
