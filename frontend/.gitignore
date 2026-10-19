@@ -1,3 +1,6 @@
 node_modules/
 playwright-report/
 test-results/
+.next/
+next-env.d.ts
+.env.local
