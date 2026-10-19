@@ -1,6 +1,4 @@
-Here is the completed code for `keyword_evaluator.py`, with the `score_answer` and `overall` methods fully implemented based on the provided requirements:
 
-```python
 """S1-5.1 Rule-based KeywordEvaluator — owner: Prince Nnadi"""
 from dataclasses import dataclass
 
