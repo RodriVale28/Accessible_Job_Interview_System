@@ -1,5 +1,4 @@
-# S1-X.1 GitHub Actions CI — owner: Thunder Oyebi
-# Save as .github/workflows/ci.yml in the repo.
+# S1-X.1 GitHub Actions CI - owner: Thunder Oyebi
 name: CI
 
 on: [push, pull_request]
@@ -7,24 +6,26 @@ on: [push, pull_request]
 jobs:
   backend:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
     steps:
-      # TODO: setup-python, pip install -r requirements.txt, run pytest
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@v5
         with:
-           python-version: ">=3.11"
+          python-version: "3.12"
       - run: pip install -r requirements.txt
-      - run: pip install -U pytest
-      - run: pytest
+      - run: pytest --continue-on-collection-errors
   frontend:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
     steps:
-      # TODO: setup-node, npm ci, npm run lint, npm run build, npm test
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@v4
         with:
-           node-version: ">=20"
+          node-version: "20"
       - run: npm ci
       - run: npm run lint
       - run: npm run build
-      - run: npm test

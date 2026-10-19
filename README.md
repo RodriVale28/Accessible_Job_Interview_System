@@ -1,140 +1,64 @@
-# Accessible_Job_Interview_System S1-4.3 
+# Accessible Job Interview System
 
-**Supabase + Render configuration**  
-US-4 Save Session & Responses · PM / Tools & Infrastructure
+CSCE 4901 Capstone, Savage 17. Sprint 1: a technical mock interview on Next.js + FastAPI + Supabase (PostgreSQL) with keyword scoring.
 
-## How it works
+## Layout
 
-- Settings like DB host, password and API keys come from the environment, so the same code runs locally and on Render with different values.
-- requirements.txt already includes gunicorn, the production server Render uses for Python apps.
+```
+backend/            FastAPI app (app/), migrations, question library, tests
+frontend/           Next.js app (app/, lib/, components/), Playwright e2e
+prototypes/         prototype reference code and task notes per task
+render.yaml         Render services (S1-4.3)
+.github/workflows/  CI (S1-X.1)
+```
 
-## What you build for Sprint 1
+## Run locally
 
-- Create the Supabase project connection settings and add them as Render environment variables/secrets.
-- Make sure .env is in .gitignore, and write a staging smoke test (app starts, can read one question).
+Backend (from `backend/`):
+```
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+pytest
+```
 
----
+Frontend (from `frontend/`):
+```
+npm ci
+npm run dev
+```
+The frontend forwards `/api/*` to `API_ORIGIN` (default `http://127.0.0.1:8000`). Copy the `.env.example` files to set your own values; never commit `.env`.
 
-# S1-1.1 · Kobra Amiri
+## Tasks and files
 
-**Interview setup screen (Next.js)**  
-US-1 Configure Technical Interview · PM / UX
+| Task | Owner | File |
+|---|---|---|
+| S1-1.1 | Kobra Amiri | `frontend/app/setup/page.tsx` |
+| S1-1.2 | Owen Erickson | `backend/app/api/sessions.py` |
+| S1-1.3 | Blake Hawkins | `frontend/lib/setupValidation.ts` |
+| S1-2.1 | Riket Sanketkumar Patel | `backend/question_library/` |
+| S1-2.2 | Moshood Abisoye | `backend/app/services/question_service.py` |
+| S1-2.3 | Arvin Barghi | `backend/tests/test_questions_api.py` |
+| S1-3.1 | Hongli Pan | `frontend/app/session/[id]/page.tsx` |
+| S1-3.2 | Jayme Nguyen | `backend/app/api/answers.py`, `frontend/lib/submitAnswer.ts` |
+| S1-3.3 | Hamidat Oloko | `backend/tests/test_answer_flow.py` |
+| S1-4.1 | Kieu Le | `backend/migrations/001_init.sql` |
+| S1-4.2 | Sublime Mpanda | `backend/app/repository.py` |
+| S1-4.3 | Valeria Rodriguez Hernandez | `render.yaml`, `backend/scripts/smoke_test.py` |
+| S1-5.1 | Prince Nnadi | `backend/app/evaluation/keyword_evaluator.py` |
+| S1-5.2 | Aisha Aloma | `backend/app/evaluation/feedback_rules.py` |
+| S1-5.3 | Shegofa Ahmadi | `frontend/app/results/[id]/page.tsx`, `backend/app/api/results.py` |
+| S1-5.4 | Christofer Arias | `frontend/e2e/critical-path.spec.ts` |
+| S1-X.1 | Thunder Oyebi | `.github/workflows/ci.yml` |
 
-## Files in this folder
+## API
 
-- `prototype_code.js` — the prototype code you own, with explanations (reference copy; the app runs from the original files).
-- `setup_page.tsx` — your Sprint 1 starter. The structure and TODOs are there; you write the implementation.
+| Method | Path | Purpose |
+|---|---|---|
+| POST | `/api/sessions` | Start: `{job_title, difficulty, duration_min}` returns session + first question |
+| GET | `/api/sessions/{id}` | Current state (question, index, timer, correct count) |
+| POST | `/api/sessions/{id}/answers` | `{question_id, text}` saves the answer, returns the next question (empty text = skip) |
+| POST | `/api/sessions/{id}/complete` | Finish and score |
+| GET | `/api/sessions/{id}/results` | Saved score and feedback |
+| GET | `/health` | Health check: `{"ok": true}` |
 
-## Where it is in the prototype
-
-- static/index.html: the section with id="view-setup" (track cards, difficulty, length, mode, job title, Begin button)
-- static/js/app.js: the SETUP block (state object, bindSeg(), startInterview())
-
-## How it works
-
-- Every choice the user makes is stored in one JavaScript object called state (track, difficulty, length, mode).
-- Each option is a button with aria-pressed="true/false"; bindSeg() switches which button is pressed and writes the value into state.
-- Clicking Begin calls startInterview(), which sends state to the server with POST /api/interviews and then opens the interview screen.
-
-## What you build for Sprint 1
-
-- Create the Next.js setup page with: job title input, interview type fixed to Technical, difficulty selector, 15/30/45-minute selector, and a Begin Interview button.
-- Keep the selections in React state and send them to Owen's start-session endpoint (S1-1.2).
-- Reuse the look of the prototype (cards + segmented buttons) so the demo stays consistent.
-
-## Done when
-
-Usable setup UI connected to local state and the agreed API contract.
-
-## Explain it in one sentence
-
-> I built the page where the user picks job title, difficulty and length; it saves those choices in state and starts the session through the API.
-
-## Workflow
-
-1. Branch: `feature/S1-1.1-interview_setup_screen_next_js`
-2. Implement the TODOs in your starter file, add tests, open a pull request.
-3. Get one review, make sure CI passes, then merge.
-
----
-
-# S1-5.1 · Prince Nnadi
-
-**Rule-based KeywordEvaluator**  
-US-5 Evaluate Answers + Results · PM / AI
-
-## Files in this folder
-
-- `prototype_code.py` — the prototype code you own, with explanations (reference copy; the app runs from the original files).
-- `keyword_evaluator.py` — your Sprint 1 starter. The structure and TODOs are there; you write the implementation.
-
-## Where it is in the prototype
-
-- llm.py: analyze_answer() — the prototype scores with AI (structure, clarity, relevance, completeness, confidence)
-- S1-2.1-question-library/questions_data.py: expected_keywords for each question (your input data)
-
-## How it works
-
-- Sprint 1 must not depend on AI to grade, so your evaluator replaces analyze_answer() for scoring.
-- Each question already carries the keywords a strong answer should mention.
-
-## What you build for Sprint 1
-
-- Write a deterministic KeywordEvaluator: lower-case and clean the answer, count which expected keywords appear, score = matched ÷ total × 100, mark correct above an agreed threshold.
-- Add the overall score (average) and a running correct count for the session.
-- Unit-test it with fixed answers so the same input always gives the same score.
-
-## Done when
-
-Deterministic evaluator with unit-testable scoring behavior.
-
-## Explain it in one sentence
-
-> My evaluator scores each answer by checking which expected keywords it mentions, then averages them into the overall score.
-
-## Workflow
-
-1. Branch: `feature/S1-5.1-rule_based_keywordevaluator`
-2. Implement the TODOs in your starter file, add tests, open a pull request.
-3. Get one review, make sure CI passes, then merge.
-
----
-
-# S1-X.1 · Thunder Oyebi
-
-**GitHub Actions CI**  
-Cross-cutting engineering · Design & Architecture / Tools & Infrastructure
-
-## Files in this folder
-
-- `prototype_code.py` — the prototype code you own, with explanations (reference copy; the app runs from the original files).
-- `ci.yml` — your Sprint 1 starter. The structure and TODOs are there; you write the implementation.
-
-## Where it is in the prototype
-
-- Nothing exists yet. The repo needs a .github/workflows/ folder.
-- requirements.txt lists the Python dependencies CI must install
-
-## How it works
-
-- CI runs automatically on every push and pull request, so broken code is caught before it reaches main.
-
-## What you build for Sprint 1
-
-- Workflow 1: set up Python, install requirements, run pytest (Arvin's and Hamidat's tests).
-- Workflow 2: set up Node, run Next.js lint, build and tests.
-- Make the checks required on pull requests and write a short troubleshooting note.
-
-## Done when
-
-PR/push CI pipeline that blocks obvious broken builds/tests.
-
-## Explain it in one sentence
-
-> I set up CI so every pull request automatically runs our tests and build, and broken code can't be merged.
-
-## Workflow
-
-1. Branch: `feature/S1-X.1-github_actions_ci`
-2. Implement the TODOs in your starter file, add tests, open a pull request.
-3. Get one review, make sure CI passes, then merge.
+Users are a browser guest id sent as the `X-User-Id` header (`frontend/lib/user.ts`, `backend/app/api/deps.py`) until login exists.

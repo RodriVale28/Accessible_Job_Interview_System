@@ -1,21 +1,19 @@
 # Render config for Interview Studio staging.
 # Secrets (sync: false) are typed in the Render dashboard, never saved here.
 services:
-  # Flask: Runs the Python app. 
+  # FastAPI backend
   - type: web
     name: interview-studio-api
     runtime: python
     plan: free
-    rootDir: .                  # folder that holds requirements.txt
+    rootDir: backend            # folder that holds requirements.txt
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT   
-    healthCheckPath: /          # keep off the database
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health    # keep off the database
     autoDeploy: true   # redeploys on every push to the branch
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.3
-      - key: FLASK_DEBUG     # config.py defaults debug ON, so force it off
-        value: "0"
       - key: LLM_MODEL         # the model to use for the interview questions
         value: gpt-4o-mini
       - key: DATABASE_URL        # Supabase connection string (pooler URI)
@@ -41,7 +39,7 @@ services:
     envVars:
       - key: NODE_VERSION   # Node version to use for the frontend
         value: 20.18.0
-      - key: NEXT_PUBLIC_API_URL       # the backend URL for the frontend to call
+      - key: API_ORIGIN       # the backend URL; Next.js forwards /api/* to it (next.config.mjs)
         sync: false
       - key: NEXT_PUBLIC_SUPABASE_URL  # same Project URL as the backend
         sync: false

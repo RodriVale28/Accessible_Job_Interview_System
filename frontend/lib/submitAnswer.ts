@@ -14,7 +14,7 @@ export async function submitAnswer(
   try {
     // 1. Send the answer to the backend
     const response = await fetch(
-      `/api/session/${sessionId}/answer`,
+      `/api/sessions/${sessionId}/answers`,
       {
         method: "POST",
         headers: {
