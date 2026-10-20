@@ -375,6 +375,31 @@ def get_session(session_id, user_id) -> dict | None:
         ) from exc
 
 
+def list_sessions(user_id, limit=20) -> list:
+    """A user's most recent sessions, newest first (for the past interviews list)."""
+
+    try:
+        with _connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT id, job_title, difficulty, duration_min, status,
+                           overall_score, started_at, completed_at
+                    FROM sessions
+                    WHERE user_id = %s
+                    ORDER BY started_at DESC
+                    LIMIT %s
+                    """,
+                    (user_id, limit)
+                )
+                return cur.fetchall()
+
+    except psycopg.Error as exc:
+        raise PersistenceError(
+            "Could not list interview sessions"
+        ) from exc
+
+
 def asked_questions(session_id) -> list:
     """Questions assigned to a session, in order: [{question_id, q_index}]."""
 
@@ -559,6 +584,13 @@ class MemoryRepository:
     def get_session(self, session_id, user_id):
         s = self.sessions.get(session_id)
         return dict(s) if s and s["user_id"] == str(user_id) else None
+
+    def list_sessions(self, user_id, limit=20) -> list:
+        mine = [s for s in self.sessions.values() if s["user_id"] == str(user_id)]
+        mine.sort(key=lambda s: (s["started_at"], s["id"]), reverse=True)
+        keys = ("id", "job_title", "difficulty", "duration_min", "status",
+                "overall_score", "started_at", "completed_at")
+        return [{k: s[k] for k in keys} for s in mine[:limit]]
 
     def get_total_questions(self, session_id):
         s = self.sessions.get(session_id)

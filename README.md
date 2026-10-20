@@ -53,6 +53,7 @@ The frontend forwards `/api/*` to `API_ORIGIN` (default `http://127.0.0.1:8000`)
 
 | Method | Path | Purpose |
 |---|---|---|
+| GET | `/api/sessions` | The user's past interviews, newest first |
 | POST | `/api/sessions` | Start: `{job_title, difficulty, duration_min}` returns session + first question |
 | GET | `/api/sessions/{id}` | Current state (question, index, timer, correct count) |
 | POST | `/api/sessions/{id}/answers` | `{question_id, text}` saves the answer, returns the next question (empty text = skip) |
@@ -60,4 +61,6 @@ The frontend forwards `/api/*` to `API_ORIGIN` (default `http://127.0.0.1:8000`)
 | GET | `/api/sessions/{id}/results` | Saved score and feedback |
 | GET | `/health` | Health check: `{"ok": true}` |
 
-Users are a browser guest id sent as the `X-User-Id` header (`frontend/lib/user.ts`, `backend/app/api/deps.py`) until login exists.
+Users log in with Supabase Auth (`/login`, S1-0.1). The browser sends the Supabase access token as `Authorization: Bearer <token>`, and `backend/app/api/deps.py` checks it against the project's public keys (`SUPABASE_URL`, no secret). Sessions belong to `auth.users` (`backend/migrations/002_sessions_auth_users.sql`, run once in Supabase).
+
+Guest mode for local dev and CI: leave the frontend `NEXT_PUBLIC_SUPABASE_*` vars empty and set `ALLOW_GUEST=1` on the backend; the browser then sends a random id as `X-User-Id`. Never set `ALLOW_GUEST` on Render.

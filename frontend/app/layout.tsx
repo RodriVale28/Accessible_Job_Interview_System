@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { MarkIcon, ShieldIcon } from '@/components/Icons';
+import { AccountMenu, AuthGate } from '@/components/AuthGate';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -21,9 +22,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <Link href="/" className="brand"><span className="mark"><MarkIcon /></span>Interview Studio</Link>
               <div className="spacer" />
               <Link href="/setup" className="chip-btn">New interview</Link>
+              <AccountMenu />
             </div>
           </header>
-          <main id="main">{children}</main>
+          <main id="main"><AuthGate>{children}</AuthGate></main>
           <footer>
             <div className="wrap">
               <span>Accessible Interview System — CSCE 4901 Capstone, Savage 17.</span>

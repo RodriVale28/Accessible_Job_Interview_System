@@ -294,7 +294,7 @@ def test_unknown_session_returns_404(client, user):
 @pytest.mark.parametrize(
     "headers,status",
     [
-        ({}, 422),
+        ({}, 401),  # not logged in (was 422 when the guest header was required)
         ({"X-User-Id": "invalid"}, 400),
         ({"X-User-Id": str(uuid.UUID(int=1))}, 404),
     ],
