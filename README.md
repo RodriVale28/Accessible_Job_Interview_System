@@ -16,14 +16,13 @@ render.yaml         Render services (S1-4.3)
 
 Backend (from `backend/`):
 ```
-pip install -r requirements.txt
+pip install fastapi "uvicorn[standard]" pydantic "psycopg[binary]" python-dotenv pytest httpx
 uvicorn app.main:app --reload --port 8000
-pytest
 ```
 
 Frontend (from `frontend/`):
 ```
-npm ci
+npm install
 npm run dev
 ```
 The frontend forwards `/api/*` to `API_ORIGIN` (default `http://127.0.0.1:8000`). Copy the `.env.example` files to set your own values; never commit `.env`.
