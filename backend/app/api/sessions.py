@@ -55,6 +55,8 @@ class SessionCreate(BaseModel):
             raise ValueError("Job title is required.")
         if len(value) < 2:
             raise ValueError("Job title must be at least 2 characters.")
+        if not any(ch.isalpha() for ch in value):
+            raise ValueError("Job title must include letters, not only numbers or special characters.")
         return value
 
     @field_validator("duration_min")
