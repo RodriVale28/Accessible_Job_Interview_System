@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <title>Interview Session</title>
+    <style>
+      body { margin:0; font-family:system-ui,sans-serif; }
+      .prototype-demo { max-width:850px; margin:20px auto 40px; padding:20px; border:1px solid #dce2ec; border-radius:12px; background:#fff; color:#182230; }
+      .prototype-demo h2 { margin-top:0; }
+      #prototype-messages { min-height:70px; max-height:260px; overflow:auto; padding:12px; background:#f5f7fb; border-radius:8px; }
+      .prototype-demo button { margin:8px 8px 0 0; padding:8px 12px; }
+      .prototype-demo .msg { padding:8px; margin:6px 0; border-radius:8px; background:#e8edf4; }
+      .prototype-demo .me { background:#dfe8ff; text-align:right; }
+      .prototype-demo .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+      .prototype-demo .typing i { display:inline-block; width:6px; height:6px; margin:0 2px; background:#526174; border-radius:50%; animation:dot .7s infinite alternate; }
+      .prototype-demo .typing i:nth-child(2) { animation-delay:.2s; } .prototype-demo .typing i:nth-child(3) { animation-delay:.4s; }
+      @keyframes dot { to { opacity:.35; transform:translateY(-3px); } }
+      @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration:.01ms !important; transition-duration:.01ms !important; } }
+    </style>
+    <script type="importmap">
+      { "imports": { "react": "https://esm.sh/react@18.3.1", "react-dom/client": "https://esm.sh/react-dom@18.3.1/client" } }
+    </script>
+    <script src="https://unpkg.com/@babel/standalone@7.26.10/babel.min.js"></script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <section class="prototype-demo" aria-labelledby="prototype-title">
+      <h2 id="prototype-title">Prototype helper preview</h2>
+      <p>This preview calls the same question, answer, and analyzing helpers defined in <code>prototype_code.js</code>.</p>
+      <div id="prototype-messages" role="log" aria-live="polite" aria-label="Prototype conversation"></div>
+      <button id="prototype-answer" type="button">Add sample answer</button>
+      <button id="prototype-analyze" type="button">Show analyzing state</button>
+    </section>
+
+    <script type="module">
+      import React from 'react';
+      import { createRoot } from 'react-dom/client';
+      const source = await fetch('./session_page.tsx').then((response) => {
+        if (!response.ok) throw new Error(`Could not load session_page.tsx (${response.status})`);
+        return response.text();
+      });
+      const compiled = Babel.transform(source, { filename: 'session_page.tsx', presets: ['typescript', 'react'] }).code;
+      const moduleUrl = URL.createObjectURL(new Blob([compiled], { type: 'text/javascript' }));
+      const { default: SessionPage } = await import(moduleUrl);
+      createRoot(document.getElementById('app')).render(<SessionPage />);
+    </script>
+    <script type="module">
+      import { appendQuestion, appendAnswer, appendAnalyzing } from './prototype_code.js';
+
+      const messages = document.getElementById('prototype-messages');
+      appendQuestion({
+        messages,
+        text: 'Tell me about a time you adapted to a change at work.',
+        tag: 'Behavioral',
+        speak(text) {
+          if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+          }
+        },
+      });
+      document.getElementById('prototype-answer').addEventListener('click', () => {
+        appendAnswer(messages, 'I adjusted the project plan, shared the changes with my team, and we delivered on time.');
+      });
+      document.getElementById('prototype-analyze').addEventListener('click', async (event) => {
+        event.currentTarget.disabled = true;
+        const indicator = appendAnalyzing(messages);
+        await indicator.wait();
+        indicator.remove();
+        event.currentTarget.disabled = false;
+      });
+    </script>
+  </body>
+</html>
