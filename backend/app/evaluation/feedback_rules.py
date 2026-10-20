@@ -1,20 +1,26 @@
 """S1-5.2 Feedback-generation rules — owner: Aisha Aloma"""
 
+BLANK_STRENGTH = "No answer was provided."
+BLANK_IMPROVEMENT = "Try answering the question and including relevant keywords."
+BLANK_TIP = "Start by answering the question directly."
+
+
+def _is_blank(answer):
+    return answer is not None and not str(answer).strip()
+
 
 def feedback_for_answer(answer_score, answer=None) -> dict:
-    """Generate rule-based feedback for one evaluated answer."""
-
     matched = list(getattr(answer_score, "matched", []) or [])
     missing = list(getattr(answer_score, "missing", []) or [])
     score = getattr(answer_score, "score", 0)
     correct = getattr(answer_score, "correct", False)
+    blank = _is_blank(answer)
 
-    if answer is not None and not answer.strip():
-        strengths = "No answer was provided."
-        improvements = (
-            "Try answering the question and including relevant keywords."
-        )
-        tip = "Start by answering the question directly."
+    if blank:
+        status = "blank"
+        strengths = BLANK_STRENGTH
+        improvements = BLANK_IMPROVEMENT
+        tip = BLANK_TIP
     else:
         if matched:
             strengths = (
@@ -32,9 +38,18 @@ def feedback_for_answer(answer_score, answer=None) -> dict:
             improvements = "You included all the expected keywords."
             tip = "Continue supporting your answers with clear examples."
 
+        if correct:
+            status = "correct"
+        elif matched:
+            status = "partial"
+        else:
+            status = "incorrect"
+
     return {
         "score": score,
         "correct": correct,
+        "answered": not blank,
+        "status": status,
         "matched": matched,
         "missing": missing,
         "strengths": strengths,
@@ -44,8 +59,6 @@ def feedback_for_answer(answer_score, answer=None) -> dict:
 
 
 def session_feedback(answer_scores, answers=None) -> dict:
-    """Generate an overall feedback summary for a session."""
-
     answer_scores = list(answer_scores)
 
     if answers is None:
@@ -53,9 +66,7 @@ def session_feedback(answer_scores, answers=None) -> dict:
     else:
         answers = list(answers)
         if len(answers) != len(answer_scores):
-            raise ValueError(
-                "answers and answer_scores must have the same length."
-            )
+            raise ValueError("answers and answer_scores must have the same length.")
 
     results = [
         feedback_for_answer(score, answer)
@@ -65,34 +76,35 @@ def session_feedback(answer_scores, answers=None) -> dict:
     if not results:
         return {
             "overall": 0,
+            "correct_count": 0,
+            "total": 0,
+            "unanswered_count": 0,
             "strengths": "No answers were evaluated.",
             "improvements": "Complete an answer to receive feedback.",
             "answers": [],
         }
 
-    overall = round(
-        sum(item["score"] for item in results) / len(results)
-    )
+    overall = round(sum(item["score"] for item in results) / len(results))
+    correct_count = sum(1 for item in results if item["correct"])
+    unanswered_count = sum(1 for item in results if item["status"] == "blank")
 
     strengths = [
         item["strengths"]
         for item in results
-        if item["matched"] or item["strengths"] == "No answer was provided."
+        if item["matched"] or item["status"] == "blank"
     ]
-
     improvements = [
         item["improvements"]
         for item in results
-        if item["missing"] or item["strengths"] == "No answer was provided."
+        if item["missing"] or item["status"] == "blank"
     ]
 
     return {
         "overall": overall,
-        "strengths": (
-            " ".join(strengths)
-            if strengths
-            else "Keep practicing your answers."
-        ),
+        "correct_count": correct_count,
+        "total": len(results),
+        "unanswered_count": unanswered_count,
+        "strengths": " ".join(strengths) if strengths else "Keep practicing your answers.",
         "improvements": (
             " ".join(improvements)
             if improvements
