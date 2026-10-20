@@ -243,3 +243,102 @@ def get_session_with_responses(session_id, user_id) -> dict:
         raise PersistenceError(
             "Could not retrieve interview session"
         ) from exc
+def get_total_questions(session_id):
+    """Return the total number of questions for a session."""
+
+    try:
+        with _connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT total_questions
+                    FROM sessions
+                    WHERE id = %s
+                    """,
+                    (session_id,)
+                )
+
+                result = cur.fetchone()
+
+                if result is None:
+                    return None
+
+                return result["total_questions"]
+
+    except psycopg.Error as exc:
+        raise PersistenceError(
+            "Could not retrieve total question count"
+        ) from exc
+
+def count_asked_questions(session_id) -> int:
+    """Count the questions already assigned to a session."""
+
+    try:
+        with _connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT COUNT(*) AS total
+                    FROM session_questions
+                    WHERE session_id = %s
+                    """,
+                    (session_id,)
+                )
+
+                result = cur.fetchone()
+                return result["total"]
+
+    except psycopg.Error as exc:
+        raise PersistenceError(
+            "Could not count asked questions"
+        ) from exc
+
+def pick_unused_question(session_id, difficulty):
+    """Select a random unused question for the session."""
+
+    try:
+        with _connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT q.id, q.prompt, q.category
+                    FROM question_library AS q
+                    WHERE q.difficulty = %s
+                      AND NOT EXISTS (
+                          SELECT 1
+                          FROM session_questions AS sq
+                          WHERE sq.session_id = %s
+                            AND sq.question_id = q.id
+                      )
+                    ORDER BY RANDOM()
+                    LIMIT 1
+                    """,
+                    (difficulty, session_id)
+                )
+
+                return cur.fetchone()
+
+    except psycopg.Error as exc:
+        raise PersistenceError(
+            "Could not select an unused question"
+        ) from exc
+
+def record_asked_question(session_id, question_id, q_index):
+    """Record a question assigned to an interview session."""
+
+    try:
+        with _connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO session_questions
+                        (session_id, question_id, q_index)
+                    VALUES (%s, %s, %s)
+                    """,
+                    (session_id, question_id, q_index)
+                )
+
+    except psycopg.Error as exc:
+        raise PersistenceError(
+            "Could not record asked question"
+        ) from exc
