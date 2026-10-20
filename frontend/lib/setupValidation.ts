@@ -10,6 +10,7 @@ export function validateSetup(form: SetupForm): FieldErrors {
     if (!title) errors.jobTitle = 'Enter the job title you are preparing for.';
     else if (title.length < 2) errors.jobTitle = 'Job title must be at least 2 characters.';
     else if (title.length > 120) errors.jobTitle = 'Job title must be 120 characters or fewer.';
+    else if (!/\p{L}/u.test(title)) errors.jobTitle = 'Job title must include letters, not only numbers or special characters.';
 
     if (!form.difficulty || !(DIFFICULTIES as readonly string[]).includes(form.difficulty))
         errors.difficulty = 'Choose a difficulty: Easy, Medium or Hard.';
