@@ -69,5 +69,6 @@ def test_raises_when_library_runs_out_before_total():
 def test_unknown_session_raises():
     repo = FakeRepo()
     repo.total = None
-    with pytest.raises(qs.NoQuestionAvailable):
+    with pytest.raises(qs.NoQuestionAvailable) as exc:
         qs.next_question(99, "Easy", repo=repo)
+    assert exc.value.reason == "not_found"

@@ -5,6 +5,7 @@ class NoQuestionAvailable(Exception):
     """No question can be returned.
 
     reason == "library_empty"    -> the endpoint should answer 404
+    reason == "not_found"        -> the endpoint should answer 404
     reason == "session_complete" -> the endpoint should answer 409
     """
 
@@ -29,7 +30,7 @@ def next_question(session_id: int, difficulty: str, repo=None) -> dict:
 
     total = repo.get_total_questions(session_id)          # sessions.total_questions
     if total is None:
-        raise NoQuestionAvailable("Interview session not found.", "session_complete")
+        raise NoQuestionAvailable("Interview session not found.", "not_found")
 
     asked = repo.count_asked_questions(session_id)        # rows in session_questions
     if asked >= total:
