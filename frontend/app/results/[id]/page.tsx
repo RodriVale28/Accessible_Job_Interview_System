@@ -1,12 +1,19 @@
 // S1-5.3 Results & feedback page (Next.js) — owner: Shegofa Ahmadi
-
-
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { ApiError, getResults } from '../../../lib/api';
-import type { Results } from '../../../lib/types';
+import { ApiError, getResults, startSession } from '../../../lib/api';
+import type { AnswerResult, Results } from '../../../lib/types';
+
+function answerStatus(a: AnswerResult): { text: string; pill: 'good' | 'mid' | 'bad' } {
+  if (a.status === 'unanswered') return { text: 'Not answered', pill: 'bad' };
+  if (a.status === 'blank') return { text: 'Skipped', pill: 'bad' };
+  if (a.correct) return { text: 'Correct', pill: 'good' };
+  if (a.matched.length > 0) return { text: 'Partly correct', pill: 'mid' };
+  return { text: 'Incorrect', pill: 'bad' };
+}
 
 export default function ResultsPage() {
   const params = useParams<{ id: string }>();
@@ -16,240 +23,217 @@ export default function ResultsPage() {
   const [results, setResults] = useState<Results | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [retrying, setRetrying] = useState(false);
+  const [retryError, setRetryError] = useState('');
+
+  // Only the latest request may update state (ignores late responses after
+  // the id changes, the page unmounts, or "Try again" is pressed twice).
+  const requestRef = useRef(0);
+
+  // State is only set in the promise callbacks, after the request finishes.
+  const loadResults = useCallback(() => {
+    const request = ++requestRef.current;
+    const isLatest = () => request === requestRef.current;
+    return getResults(id).then(
+      (data) => {
+        if (!isLatest()) return;
+        setResults(data);
+        setLoading(false);
+      },
+      (err) => {
+        if (!isLatest()) return;
+        setError(
+          err instanceof ApiError
+            ? err.message
+            : 'Could not load your results. Please try again.'
+        );
+        setLoading(false);
+      }
+    );
+  }, [id]);
 
   useEffect(() => {
-    let active = true;
-
-    async function loadResults() {
-      try {
-        setLoading(true);
-        setError('');
-        const data = await getResults(id);
-
-        if (active) {
-          setResults(data);
-        }
-      } catch (err) {
-        if (active) {
-          setError(
-            err instanceof ApiError
-              ? err.message
-              : 'Could not load your results. Please try again.'
-          );
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    }
-
+    const requests = requestRef;
     if (id) {
       void loadResults();
     }
-
     return () => {
-      active = false;
+      requests.current++;
     };
-  }, [id]);
+  }, [id, loadResults]);
+
+  function retry() {
+    setLoading(true);
+    setError('');
+    void loadResults();
+  }
+
+  // Start a new interview with the same job title, difficulty and length.
+  async function retrySameSetup() {
+    if (!results || retrying) return;
+    setRetrying(true);
+    setRetryError('');
+    try {
+      const session = await startSession({
+        job_title: results.job_title,
+        difficulty: results.difficulty,
+        duration_min: results.duration_min,
+      });
+      router.push(`/session/${session.session_id}`);
+    } catch (err) {
+      setRetrying(false);
+      setRetryError(err instanceof ApiError ? err.message : 'Could not start a new interview. Please try again.');
+    }
+  }
 
   if (loading) {
     return (
-      <section className="report" aria-live="polite">
-        <h1>Interview results</h1>
-        <p>Loading your results...</p>
+      <section className="wrap report" aria-live="polite">
+        <h1 className="report-title">Interview results</h1>
+        <p className="muted">Loading your results…</p>
       </section>
     );
   }
 
   if (error || !results) {
     return (
-      <section className="report" aria-labelledby="results-error-title">
-        <h1 id="results-error-title">Results unavailable</h1>
-        <p role="alert">
-          {error || 'We could not find results for this interview.'}
-        </p>
-        <div className="actions">
-          <button
-            className="btn primary"
-            onClick={() => router.refresh()}
-          >
-            Try again
-          </button>
-          <button
-            className="btn amber"
-            onClick={() => router.push('/setup')}
-          >
-            Start new session
-          </button>
+      <section className="wrap report" aria-labelledby="results-error-title">
+        <div className="panel pad">
+          <h1 id="results-error-title" className="card-title">Results unavailable</h1>
+          <p role="alert" className="alert">
+            {error || 'We could not find results for this interview.'}
+          </p>
+          <div className="actions">
+            <button className="btn primary" onClick={retry}>Try again</button>
+            <button className="btn amber" onClick={() => router.push('/setup')}>Start new session</button>
+          </div>
         </div>
       </section>
     );
   }
 
-  const score = Math.max(0, Math.min(100, results.overall_score));
-  const completedDate = results.completed_at
-    ? new Date(results.completed_at).toLocaleString()
-    : 'Not available';
+  const score = Math.max(0, Math.min(100, Math.round(results.overall_score)));
+  const notReached = results.total - results.answers.length;
 
   return (
-    <section className="report" aria-labelledby="results-title">
-      <header className="report-hero">
-        <p>Interview complete</p>
-        <h1 id="results-title">Your results and feedback</h1>
-        <p>
-          {results.job_title} · {results.difficulty} difficulty
-        </p>
+    <section className="wrap report" aria-labelledby="results-title">
+      <p className="section-label">Interview report</p>
+      <div className="panel pad">
+        <div className="report-hero">
+          <div className="score-box" aria-hidden="true">
+            {score}
+            <small>/ 100</small>
+          </div>
+          <div>
+            <h1 id="results-title" className="report-title">
+              Overall score: {score} out of 100
+            </h1>
+            <p style={{ margin: '0 0 6px' }}>
+              <span className="badge">{results.label}</span>
+            </p>
+            <p className="muted" style={{ margin: 0 }}>
+              {results.job_title} · {results.interview_type} · {results.difficulty} · {results.duration_min} min
+            </p>
+            <p style={{ margin: '6px 0 0' }}>
+              {results.correct_count} of {results.total} correct · {results.answered_count} answered ·{' '}
+              {results.missed_count} skipped or not answered
+            </p>
+          </div>
+        </div>
+
+        {!results.completed_at && (
+          <p className="alert" style={{ marginTop: 18 }}>
+            This interview is still in progress, so the score may change.{' '}
+            <Link href={`/session/${results.session_id}`}>Continue the interview</Link>
+          </p>
+        )}
 
         <div className="rband">
-          <div
-            role="img"
-            aria-label={`Overall score: ${score} out of 100`}
-            style={{
-              width: 140,
-              height: 140,
-              borderRadius: '50%',
-              display: 'grid',
-              placeItems: 'center',
-              background: `conic-gradient(#267653 ${score * 3.6}deg, #e5e7eb 0deg)`,
-              margin: '16px auto',
-            }}
-          >
-            <div
-              style={{
-                width: 108,
-                height: 108,
-                borderRadius: '50%',
-                background: 'var(--surface, white)',
-                display: 'grid',
-                placeContent: 'center',
-                textAlign: 'center',
-              }}
-            >
-              <strong style={{ fontSize: 28 }}>{score}%</strong>
-              <span>Overall score</span>
-            </div>
-          </div>
-
-          <p>
-            <strong>{results.label}</strong>
-          </p>
-          <p>
-            {results.correct_count} correct out of {results.total} questions
-          </p>
-          <p>
-            {results.answered_count} answered · {results.missed_count} missed
-          </p>
+          <section className="rcard good" aria-labelledby="strengths-title">
+            <h2 className="rcard-h" id="strengths-title">Strengths</h2>
+            <p>{results.strengths}</p>
+          </section>
+          <section className="rcard grow" aria-labelledby="improvements-title">
+            <h2 className="rcard-h" id="improvements-title">Where to improve</h2>
+            <p>{results.improvements}</p>
+          </section>
         </div>
-      </header>
 
-      <section className="rcard" aria-labelledby="strengths-title">
-        <h2 className="rcard-h" id="strengths-title">Your strengths</h2>
-        <p>{results.strengths}</p>
-      </section>
-
-      <section className="rcard" aria-labelledby="improvements-title">
-        <h2 className="rcard-h" id="improvements-title">
-          Areas to improve
-        </h2>
-        <p>{results.improvements}</p>
-      </section>
-
-      <section aria-labelledby="answer-feedback-title">
-        <h2 id="answer-feedback-title">Question-by-question feedback</h2>
-
+        <h2 className="section-label" style={{ marginTop: 26 }}>Question-by-question</h2>
         {results.answers.length === 0 ? (
-          <p>No answer feedback is available for this interview.</p>
+          <p className="muted">No questions were answered in this interview.</p>
         ) : (
-          <div className="qlist">
-            {results.answers.map((answer, index) => (
-              <article
-                className="qcard"
-                key={`${answer.question_id}-${index}`}
-              >
-                <div className="qcard-head">
-                  <h3>
-                    Question {answer.q_index || index + 1}: {answer.prompt}
-                  </h3>
-                  <span
-                    className={`pill ${
-                      answer.correct
-                        ? 'good'
-                        : answer.status === 'blank' ||
-                            answer.status === 'unanswered'
-                          ? 'bad'
-                          : 'mid'
-                    }`}
-                  >
-                    {answer.status === 'blank' ||
-                    answer.status === 'unanswered'
-                      ? 'Unanswered'
-                      : answer.correct
-                        ? 'Correct'
-                        : 'Needs practice'}
-                  </span>
-                </div>
+          <ol className="qlist">
+            {results.answers.map((a) => {
+              const st = answerStatus(a);
+              const answered = a.status === 'answered';
+              return (
+                <li className="qcard" key={a.question_id}>
+                  <div className="qcard-head">
+                    <span className="hs" aria-hidden="true">Q{a.q_index}</span>
+                    <div className="grow">
+                      <div className="hd">
+                        {st.text} · {a.score}/100 · {a.category}
+                      </div>
+                      <h3 className="ht">
+                        <span className="sr-only">Question {a.q_index}: </span>
+                        {a.prompt}
+                      </h3>
+                    </div>
+                    <span className={`pill ${st.pill}`}>{st.text}</span>
+                  </div>
 
-                <p><strong>Your answer:</strong></p>
-                <p>
-                  {answer.answer?.trim()
-                    ? answer.answer
-                    : 'No answer was provided.'}
-                </p>
+                  {answered ? (
+                    <blockquote aria-label="Your answer">{a.answer}</blockquote>
+                  ) : (
+                    <p className="muted">
+                      {a.status === 'blank' ? 'You skipped this question.' : 'Time ran out or the interview ended before you answered.'}
+                    </p>
+                  )}
 
-                <p>
-                  <strong>Score:</strong> {answer.score}%
-                </p>
+                  {answered && a.strengths && (
+                    <p><b>What went well:</b> {a.strengths}</p>
+                  )}
+                  <p><b>To improve:</b> {a.improvements}</p>
 
-                <div className="hs">
-                  <h4>What went well</h4>
-                  <p>{answer.strengths || 'Keep practicing your answers.'}</p>
-                </div>
-
-                <div className="hd">
-                  <h4>What to improve</h4>
-                  <p>
-                    {answer.improvements ||
-                      'Try adding more relevant details to your answer.'}
-                  </p>
-                </div>
-
-                {answer.matched.length > 0 && (
-                  <p>
-                    <strong>Keywords included:</strong>{' '}
-                    {answer.matched.join(', ')}
-                  </p>
-                )}
-
-                {answer.missing.length > 0 && (
-                  <p>
-                    <strong>Keywords to review:</strong>{' '}
-                    {answer.missing.join(', ')}
-                  </p>
-                )}
-              </article>
-            ))}
-          </div>
+                  {(a.matched.length > 0 || a.missing.length > 0) && (
+                    <div className="kw">
+                      {a.matched.length > 0 && (
+                        <p>
+                          <span className="kw-l">Key terms you used:</span>
+                          {a.matched.map((k) => <span className="chip good" key={k}>{k}</span>)}
+                        </p>
+                      )}
+                      {a.missing.length > 0 && (
+                        <p>
+                          <span className="kw-l">Key terms to review:</span>
+                          {a.missing.map((k) => <span className="chip" key={k}>{k}</span>)}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ol>
         )}
-      </section>
 
-      <p>
-        <strong>Completed:</strong> {completedDate}
-      </p>
+        {notReached > 0 && (
+          <p className="muted" style={{ marginTop: 12 }}>
+            {notReached} of {results.total} questions were not reached before the interview ended. They count as 0 in
+            the overall score.
+          </p>
+        )}
 
-      <div className="actions">
-        <button
-          className="btn amber"
-          onClick={() => router.push('/setup')}
-        >
-          Retry interview
-        </button>
-        <button
-          className="btn primary"
-          onClick={() => router.push('/setup')}
-        >
-          Start new session
-        </button>
+        {retryError && <p role="alert" className="alert" style={{ marginTop: 18 }}>{retryError}</p>}
+        <div className="actions">
+          <button className="btn amber" onClick={() => void retrySameSetup()} disabled={retrying}>
+            {retrying ? 'Starting…' : 'Retry with same setup'}
+          </button>
+          <button className="btn primary" onClick={() => router.push('/setup')}>
+            Start new session
+          </button>
+        </div>
       </div>
     </section>
   );

@@ -1,24 +1,58 @@
-
+// S1-1.1 Interview setup page — owner: Kobra Amiri
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
+import { CodeIcon, PlayIcon } from '@/components/Icons';
 import { startSession } from '../../lib/api';
+import { FIELD_ORDER, validateSetup, type FieldErrors } from '../../lib/setupValidation';
 import type { Difficulty, Duration } from '../../lib/types';
 
+const DIFFICULTY_OPTIONS: { value: Difficulty; hint: string }[] = [
+  { value: 'Easy', hint: 'Fundamentals' },
+  { value: 'Medium', hint: 'Applied' },
+  { value: 'Hard', hint: 'In depth' },
+];
+
+const DURATION_OPTIONS: { value: Duration; questions: number }[] = [
+  { value: 15, questions: 5 },
+  { value: 30, questions: 8 },
+  { value: 45, questions: 10 },
+];
+
 export default function SetupPage() {
+  const router = useRouter();
   const [jobTitle, setJobTitle] = useState('');
-  const [difficulty, setDifficulty] = useState<Difficulty>('Medium');
-  const [durationMin, setDurationMin] = useState<Duration>(15);
+  const [difficulty, setDifficulty] = useState<Difficulty | null>(null);
+  const [durationMin, setDurationMin] = useState<Duration | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [sessionId, setSessionId] = useState<number | null>(null);
+
+  const jobTitleRef = useRef<HTMLInputElement>(null);
+  const difficultyRef = useRef<HTMLButtonElement>(null);
+  const durationRef = useRef<HTMLButtonElement>(null);
+  const fieldRefs = { jobTitle: jobTitleRef, difficulty: difficultyRef, durationMin: durationRef };
+
+  const errorCount = Object.keys(fieldErrors).length;
+
+  function clearFieldError(field: keyof FieldErrors) {
+    setFieldErrors(({ [field]: _removed, ...rest }) => rest);
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError('');
 
-    if (!jobTitle.trim()) {
-      setError('Please enter a job title.');
+    const errors = validateSetup({
+      jobTitle,
+      difficulty: difficulty ?? undefined,
+      durationMin: durationMin ?? undefined,
+    });
+    setFieldErrors(errors);
+    const firstInvalid = FIELD_ORDER.find((field) => errors[field]);
+    if (firstInvalid || !difficulty || !durationMin) {
+      if (firstInvalid) fieldRefs[firstInvalid].current?.focus();
       return;
     }
 
@@ -31,121 +65,151 @@ export default function SetupPage() {
         duration_min: durationMin,
       });
 
-      setSessionId(session.session_id);
-
-      // Navigation will use the team's confirmed interview route.
+      router.push(`/session/${session.session_id}`);
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
           : 'Unable to start the interview. Please try again.'
       );
-    } finally {
       setLoading(false);
     }
   }
 
   return (
-    <main className="mx-auto max-w-2xl p-6">
-      <h1 className="mb-2 text-3xl font-bold">
-        Interview Setup
-      </h1>
+    <section className="wrap hero" aria-labelledby="setup-title">
+      <p className="section-label">Set up your session</p>
 
-      <p className="mb-6">
-        Choose your settings before starting your interview.
-      </p>
+      <form className="panel pad" onSubmit={handleSubmit} noValidate>
+        <h1 id="setup-title" className="card-title">Interview setup</h1>
+        <p className="muted" style={{ margin: '-6px 0 20px' }}>
+          Answer technical questions one at a time, then get a score and feedback on every answer.
+        </p>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div>
-          <label htmlFor="jobTitle" className="block font-semibold">
-            Job Title
-          </label>
-
-          <input
-            id="jobTitle"
-            type="text"
-            required
-            maxLength={120}
-            value={jobTitle}
-            onChange={(e) => setJobTitle(e.target.value)}
-            placeholder="e.g. Software Engineer"
-            className="mt-2 w-full rounded border p-3"
-          />
-        </div>
-
-        <div className="rounded border p-4">
-          <h2 className="font-semibold">Interview Type</h2>
-          <p>Technical</p>
-        </div>
-
-        <fieldset>
-          <legend className="mb-2 font-semibold">
-            Difficulty
-          </legend>
-
-          <div className="flex flex-wrap gap-2">
-            {(['Easy', 'Medium', 'Hard'] as const).map((level) => (
-              <button
-                key={level}
-                type="button"
-                aria-pressed={difficulty === level}
-                onClick={() => setDifficulty(level)}
-                className={`rounded border p-3 ${
-                  difficulty === level
-                    ? 'bg-blue-700 text-white'
-                    : 'bg-white text-black'
-                }`}
-              >
-                {level}
-              </button>
-            ))}
+        {errorCount > 0 && (
+          <div role="alert" className="alert">
+            Please fix {errorCount} {errorCount === 1 ? 'field' : 'fields'} before starting.
           </div>
-        </fieldset>
-
-        <fieldset>
-          <legend className="mb-2 font-semibold">
-            Interview Duration
-          </legend>
-
-          <div className="flex flex-wrap gap-2">
-            {([15, 30, 45] as const).map((minutes) => (
-              <button
-                key={minutes}
-                type="button"
-                aria-pressed={durationMin === minutes}
-                onClick={() => setDurationMin(minutes)}
-                className={`rounded border p-3 ${
-                  durationMin === minutes
-                    ? 'bg-blue-700 text-white'
-                    : 'bg-white text-black'
-                }`}
-              >
-                {minutes} minutes
-              </button>
-            ))}
-          </div>
-        </fieldset>
-
-        {error && (
-          <p role="alert" className="text-red-700">
-            {error}
-          </p>
         )}
 
-        {sessionId !== null && (
-          <p role="status">
-            Interview session {sessionId} created successfully.
+        <div className="setup-grid">
+          <div>
+            <div className="opt-group">
+              <label htmlFor="jobTitle" className="glabel">Job title</label>
+              <input
+                id="jobTitle"
+                ref={jobTitleRef}
+                type="text"
+                required
+                maxLength={120}
+                autoComplete="organization-title"
+                value={jobTitle}
+                onChange={(e) => {
+                  setJobTitle(e.target.value);
+                  if (fieldErrors.jobTitle) clearFieldError('jobTitle');
+                }}
+                placeholder="e.g. Junior Software Engineer"
+                aria-invalid={fieldErrors.jobTitle ? true : undefined}
+                aria-describedby={fieldErrors.jobTitle ? 'jobTitle-error' : undefined}
+              />
+              {fieldErrors.jobTitle && (
+                <p id="jobTitle-error" className="field-err">{fieldErrors.jobTitle}</p>
+              )}
+            </div>
+
+            <div className="opt-group">
+              <span className="glabel">Interview type</span>
+              <div className="tracks">
+                <div className="track">
+                  <span className="ico"><CodeIcon /></span>
+                  <span>
+                    <span className="tt">Technical</span>
+                    <span className="td">Problem-solving and core CS concepts</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div className="opt-group">
+              <span className="glabel" id="difficulty-label">Difficulty</span>
+              <div
+                className="seg"
+                role="group"
+                aria-labelledby="difficulty-label"
+                aria-describedby={fieldErrors.difficulty ? 'difficulty-error' : undefined}
+                data-invalid={fieldErrors.difficulty ? 'true' : undefined}
+              >
+                {DIFFICULTY_OPTIONS.map((opt, i) => (
+                  <button
+                    key={opt.value}
+                    ref={i === 0 ? difficultyRef : undefined}
+                    type="button"
+                    aria-pressed={difficulty === opt.value}
+                    onClick={() => {
+                      setDifficulty(opt.value);
+                      if (fieldErrors.difficulty) clearFieldError('difficulty');
+                    }}
+                  >
+                    {opt.value}
+                    <small>{opt.hint}</small>
+                  </button>
+                ))}
+              </div>
+              {fieldErrors.difficulty && (
+                <p id="difficulty-error" className="field-err">{fieldErrors.difficulty}</p>
+              )}
+            </div>
+
+            <div className="opt-group">
+              <span className="glabel" id="duration-label">Length</span>
+              <div
+                className="seg"
+                role="group"
+                aria-labelledby="duration-label"
+                aria-describedby={fieldErrors.durationMin ? 'duration-error' : undefined}
+                data-invalid={fieldErrors.durationMin ? 'true' : undefined}
+              >
+                {DURATION_OPTIONS.map((opt, i) => (
+                  <button
+                    key={opt.value}
+                    ref={i === 0 ? durationRef : undefined}
+                    type="button"
+                    aria-pressed={durationMin === opt.value}
+                    onClick={() => {
+                      setDurationMin(opt.value);
+                      if (fieldErrors.durationMin) clearFieldError('durationMin');
+                    }}
+                  >
+                    {opt.value} min
+                    <small>{opt.questions} questions</small>
+                  </button>
+                ))}
+              </div>
+              {fieldErrors.durationMin && (
+                <p id="duration-error" className="field-err">{fieldErrors.durationMin}</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {error && (
+          <p role="alert" className="alert">
+            {error}
           </p>
         )}
 
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded bg-blue-700 p-3 font-semibold text-white disabled:opacity-50"
+          className={`btn amber full${loading ? ' loading' : ''}`}
+          style={{ marginTop: 6 }}
         >
-          {loading ? 'Starting Interview...' : 'Begin Interview'}
+          {!loading && <PlayIcon />}
+          {loading ? 'Starting interview…' : 'Begin Interview'}
         </button>
       </form>
-    </main>
+    </section>
   );
 }

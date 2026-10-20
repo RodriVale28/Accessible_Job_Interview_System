@@ -50,3 +50,17 @@ def next_question(session_id: int, difficulty: str, repo=None) -> dict:
         "q_index": q_index,
         "total": total,
     }
+
+def current_question(repo, session: dict):
+    """Return (question, q_index) for the question the user is answering now.
+
+    question is the full library row (with expected_keywords, for scoring only) or None
+    when the last asked question is already answered or nothing has been asked yet.
+    """
+    asked = repo.asked_questions(session["id"])
+    if not asked:
+        return None, 0
+    last = asked[-1]
+    if last["question_id"] in repo.get_responses(session["id"]):
+        return None, last["q_index"]
+    return repo.get_question(last["question_id"]), last["q_index"]

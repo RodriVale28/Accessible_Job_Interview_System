@@ -19,6 +19,18 @@ export type SessionState = {
   seconds_left: number;
 };
 
+// Response of POST /api/sessions/{id}/answers
+export type AnswerOut = {
+  saved: boolean;
+  blank: boolean;
+  correct_count: number;
+  answered: number;
+  total: number;
+  completed: boolean;
+  q_index: number;
+  question: Question | null;
+};
+
 export type AnswerResult = {
   q_index: number;
   question_id: number;

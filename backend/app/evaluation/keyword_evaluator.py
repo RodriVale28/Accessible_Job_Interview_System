@@ -63,5 +63,3 @@ class KeywordEvaluator:
             "average_score": average_score,
             "correct_count": correct_count
         }
-
-```
