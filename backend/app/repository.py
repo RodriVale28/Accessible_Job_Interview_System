@@ -9,11 +9,13 @@ from __future__ import annotations
 
 import random
 import sys
+import threading
 from datetime import datetime, timezone
 from typing import Any
 
 import psycopg
 from psycopg.rows import dict_row
+from psycopg_pool import ConnectionPool
 
 from app.config import DATABASE_URL
 
@@ -34,21 +36,34 @@ QUESTION_COUNTS = {
 }
 
 
+_pool: ConnectionPool | None = None
+_pool_lock = threading.Lock()  # sync routes run on a thread pool
+
+
 def _connection():
-    """Create a connection to the PostgreSQL database."""
+    """Borrow a pooled connection to the PostgreSQL database.
+
+    Reusing open connections avoids a new TLS handshake to Supabase on every
+    query. Leaving the `with` block commits (or rolls back) and returns it.
+    A pool timeout is a psycopg.OperationalError, so callers' handlers still apply.
+    """
+    global _pool
 
     if not DATABASE_URL:
         raise PersistenceError("DATABASE_URL is not configured")
 
-    try:
-        return psycopg.connect(
-            DATABASE_URL,
-            row_factory=dict_row
-        )
-    except psycopg.Error as exc:
-        raise PersistenceError(
-            "Unable to connect to the database"
-        ) from exc
+    with _pool_lock:
+        if _pool is None:
+            _pool = ConnectionPool(
+                DATABASE_URL,
+                min_size=1,
+                max_size=5,  # well under the Supabase session pooler's client limit
+                kwargs={"row_factory": dict_row},
+                check=ConnectionPool.check_connection,  # drop connections the pooler closed
+                timeout=10,  # fail fast (503) instead of hanging when the DB is down
+                open=True,
+            )
+    return _pool.connection()
 
 
 def create_session(user_id, job_title, difficulty, duration_min) -> int:
