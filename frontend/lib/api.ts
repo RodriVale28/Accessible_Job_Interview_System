@@ -1,7 +1,8 @@
 // Shared API helper. Everyone calls the FastAPI backend through this.
 // Requests go to /api/* on this site and are forwarded to the backend (next.config.mjs).
-import { getUserId } from './user';
-import type { Difficulty, Duration, Results, SessionState } from './types';
+import { authHeaders } from './user';
+import { loginRequired } from './supabase';
+import type { Difficulty, Duration, Results, SessionState, SessionSummary } from './types';
 
 export class ApiError extends Error {
   constructor(message: string, public status: number) {
@@ -14,11 +15,16 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   try {
     res = await fetch(path, {
       ...init,
-      headers: { 'Content-Type': 'application/json', 'X-User-Id': getUserId(), ...(init.headers ?? {}) },
+      headers: { 'Content-Type': 'application/json', ...(await authHeaders()), ...(init.headers ?? {}) },
       cache: 'no-store',
     });
   } catch {
     throw new ApiError('Could not reach the server. Check your connection and try again.', 0);
+  }
+  if (res.status === 401 && loginRequired) {
+    // not signed in, or the login expired: come back here after logging in
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- api() is not a component
+    window.location.assign(`/login?next=${encodeURIComponent(window.location.pathname)}`);
   }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -40,3 +46,5 @@ export const completeSession = (id: number | string) =>
   api<Results>(`/api/sessions/${id}/complete`, { method: 'POST' });
 
 export const getResults = (id: number | string) => api<Results>(`/api/sessions/${id}/results`);
+
+export const listSessions = () => api<SessionSummary[]>('/api/sessions');

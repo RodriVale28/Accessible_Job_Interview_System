@@ -142,3 +142,26 @@ def get_session(session_id: int, uid: str = Depends(user_id), repo=Depends(get_r
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Could not load the interview. Please try again.",
         )
+
+
+class SessionSummary(BaseModel):
+    session_id: int
+    job_title: str
+    difficulty: str
+    duration_min: int
+    status: str
+    overall_score: Optional[int] = None
+    started_at: datetime
+    completed_at: Optional[datetime] = None
+
+
+@router.get("/sessions", response_model=list[SessionSummary], summary="List the user's past interviews")
+def list_sessions(uid: str = Depends(user_id), repo=Depends(get_repo)) -> list[SessionSummary]:
+    try:
+        rows = repo.list_sessions(uid)
+    except PersistenceError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Could not load your past interviews. Please try again.",
+        )
+    return [SessionSummary(session_id=r["id"], **{k: v for k, v in r.items() if k != "id"}) for r in rows]

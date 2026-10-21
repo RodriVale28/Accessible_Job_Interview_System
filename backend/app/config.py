@@ -15,3 +15,11 @@ CORS_ORIGINS = [o.strip() for o in os.environ.get("CORS_ORIGINS", "http://localh
 
 # Seconds of grace after the timer ends before answers are refused (network lag).
 TIMER_GRACE_SECONDS = int(os.environ.get("TIMER_GRACE_SECONDS", "30"))
+
+# Supabase project URL (https://<ref>.supabase.co). The API checks login tokens against
+# this project's public signing keys, so no secret is needed.
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
+
+# Local dev, tests and CI only: accept a browser guest id (X-User-Id) instead of a login.
+# Never set this on Render.
+ALLOW_GUEST = os.environ.get("ALLOW_GUEST", "").strip().lower() in ("1", "true", "yes")

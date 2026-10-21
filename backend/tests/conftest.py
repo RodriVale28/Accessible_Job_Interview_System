@@ -1,4 +1,7 @@
+import os
 import uuid
+
+os.environ.setdefault("ALLOW_GUEST", "1")  # tests sign in with a guest id (X-User-Id)
 
 import pytest
 from fastapi.testclient import TestClient

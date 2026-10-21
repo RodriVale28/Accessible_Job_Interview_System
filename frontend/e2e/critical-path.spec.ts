@@ -1,6 +1,18 @@
 // S1-5.4 Playwright E2E: configure -> question -> answer -> complete -> results - owner: Christofer Arias
 import { test, expect } from '@playwright/test';
 
+// Login builds (NEXT_PUBLIC_SUPABASE_* set, e.g. the Render site) need a test account:
+// set E2E_EMAIL and E2E_PASSWORD. Guest-mode builds (local, CI) skip this.
+test.beforeEach(async ({ page }) => {
+  const email = process.env.E2E_EMAIL, password = process.env.E2E_PASSWORD;
+  if (!email || !password) return;
+  await page.goto('/login');
+  await page.getByLabel('Email').fill(email);
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Log in', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Log out' })).toBeVisible();
+});
+
 test('Sprint 1 critical path', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('link', { name: 'Set up a technical interview' }).click();
@@ -82,4 +94,23 @@ test('empty answer asks the user to type or skip', async ({ page }) => {
   await page.getByRole('button', { name: 'End now' }).click();
   await expect(page.getByRole('heading', { name: 'Overall score: 0 out of 100' })).toBeVisible();
   await expect(page.getByText('Not answered ·')).toBeVisible();
+});
+
+test('US-4 past interviews list reopens saved results', async ({ page }) => {
+  await page.goto('/setup');
+  await page.getByLabel('Job title').fill('Data Engineer');
+  await page.getByRole('button', { name: /^Easy/ }).click();
+  await page.getByRole('button', { name: /^15 min/ }).click();
+  await page.getByRole('button', { name: 'Begin Interview' }).click();
+  await expect(page.getByText('Question 1 of 5')).toBeVisible();
+  await page.getByRole('button', { name: 'End now' }).click();
+  await expect(page).toHaveURL(/\/results\/\d+/);
+  const resultsUrl = page.url();
+
+  // leave and come back: the finished interview is listed and opens its results
+  await page.goto('/');
+  const past = page.getByRole('region', { name: 'Your past interviews' });
+  await expect(past.getByRole('link', { name: 'Data Engineer' }).first()).toBeVisible();
+  await past.getByRole('link', { name: 'Data Engineer' }).first().click();
+  await expect(page).toHaveURL(resultsUrl);
 });

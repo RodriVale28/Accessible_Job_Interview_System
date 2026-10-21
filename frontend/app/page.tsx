@@ -1,5 +1,6 @@
 // Landing page. Links into the Sprint 1 flow.
 import Link from 'next/link';
+import { PastInterviews } from '@/components/PastInterviews';
 
 export default function Home() {
   return (
@@ -10,6 +11,7 @@ export default function Home() {
         Set up a session, answer questions one at a time, and get a score with feedback on each answer.
       </p>
       <Link className="btn amber" href="/setup">Set up a technical interview</Link>
+      <PastInterviews />
     </section>
   );
 }

@@ -1,5 +1,13 @@
-// Sprint 1 guest identity: a random id kept in this browser so a user's sessions
-// and results stay theirs and can be reopened later. Replaced by real login in US-0.
+// Who is calling the API. With login configured (lib/supabase.ts) that is the Supabase
+// access token; otherwise (local dev, CI) a random guest id kept in this browser.
+import { supabase } from './supabase';
+
+export async function authHeaders(): Promise<Record<string, string>> {
+  if (!supabase) return { 'X-User-Id': getUserId() };
+  const { data } = await supabase.auth.getSession();
+  return data.session ? { Authorization: `Bearer ${data.session.access_token}` } : {};
+}
+
 const KEY = 'interview-studio-user-id';
 let memoryId: string | null = null;
 

@@ -63,3 +63,15 @@ export type Results = {
   completed_at: string | null;
   answers: AnswerResult[];
 };
+
+// One row of GET /api/sessions (past interviews, newest first)
+export type SessionSummary = {
+  session_id: number;
+  job_title: string;
+  difficulty: Difficulty;
+  duration_min: Duration;
+  status: 'in_progress' | 'completed';
+  overall_score: number | null;
+  started_at: string;
+  completed_at: string | null;
+};
