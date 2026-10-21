@@ -50,13 +50,19 @@ def test_same_user_sees_session_after_new_login(client):
 
 
 @pytest.mark.parametrize("bad", [
-    {"exp": int(time.time()) - 10},                    # expired
+    {"exp": int(time.time()) - 120},                   # expired (past the 30 s leeway)
     {"aud": "anon"},                                   # not a signed-in user
     {"iss": "https://someone-else.supabase.co/auth/v1"},
 ])
 def test_rejects_bad_tokens(client, bad):
     r = client.post("/api/sessions", headers=token(**bad), json=SETUP)
     assert r.status_code == 401
+
+
+def test_accepts_token_from_slightly_fast_clock(client):
+    # Supabase's clock a few seconds ahead of the server's: a fresh login must still work
+    r = client.get("/api/sessions", headers=token(iat=int(time.time()) + 5))
+    assert r.status_code == 200
 
 
 def test_rejects_token_signed_by_another_key(client):

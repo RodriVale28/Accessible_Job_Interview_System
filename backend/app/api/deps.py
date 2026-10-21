@@ -19,8 +19,9 @@ def _verify_token(token: str) -> str:
     if _jwks is None:
         _jwks = jwt.PyJWKClient(f"{config.SUPABASE_URL}/auth/v1/.well-known/jwks.json", cache_keys=True)
     key = _jwks.get_signing_key_from_jwt(token).key
+    # leeway: Render's clock can run a little behind Supabase's, which would reject a fresh token
     claims = jwt.decode(token, key, algorithms=["ES256", "RS256"], audience="authenticated",
-                        issuer=f"{config.SUPABASE_URL}/auth/v1")
+                        issuer=f"{config.SUPABASE_URL}/auth/v1", leeway=30)
     return str(uuid.UUID(claims["sub"]))
 
 
