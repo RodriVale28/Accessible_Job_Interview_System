@@ -66,7 +66,14 @@ def _connection():
     return _pool.connection()
 
 
-def create_session(user_id, job_title, difficulty, duration_min) -> int:
+# S2-1.1: feedback fields added in Sprint 2; save_answer fills in any that are missing.
+FEEDBACK_DEFAULTS = {
+    "criteria_met": [], "criteria_missed": [], "evidence": [], "reasons": [], "grader": "keyword",
+}
+
+
+def create_session(user_id, job_title, difficulty, duration_min,
+                   role_id=None, interview_type="Technical", timed=False) -> int:
     """Create an interview session and return its ID."""
 
     if duration_min not in QUESTION_COUNTS:
@@ -81,8 +88,9 @@ def create_session(user_id, job_title, difficulty, duration_min) -> int:
                     """
                     INSERT INTO sessions
                         (user_id, job_title, difficulty,
-                         duration_min, total_questions)
-                    VALUES (%s, %s, %s, %s, %s)
+                         duration_min, total_questions,
+                         role_id, interview_type, timed)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING id
                     """,
                     (
@@ -90,7 +98,10 @@ def create_session(user_id, job_title, difficulty, duration_min) -> int:
                         job_title,
                         difficulty,
                         duration_min,
-                        total_questions
+                        total_questions,
+                        role_id,
+                        interview_type,
+                        timed
                     )
                 )
 
@@ -235,6 +246,7 @@ def get_session_with_responses(session_id, user_id) -> dict | None:
                         q.id AS question_id,
                         q.prompt,
                         q.category,
+                        q.question_type,
                         r.id AS response_id,
                         r.answer_text,
                         r.is_blank,
@@ -244,7 +256,11 @@ def get_session_with_responses(session_id, user_id) -> dict | None:
                         f.matched_keywords,
                         f.missing_keywords,
                         f.strengths,
-                        f.improvements
+                        f.improvements,
+                        f.criteria_met,
+                        f.criteria_missed,
+                        f.evidence,
+                        f.grader
                     FROM session_questions AS sq
                     JOIN question_library AS q
                         ON q.id = sq.question_id
@@ -398,11 +414,13 @@ def list_sessions(user_id, limit=20) -> list:
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT id, job_title, difficulty, duration_min, status,
-                           overall_score, started_at, completed_at
-                    FROM sessions
-                    WHERE user_id = %s
-                    ORDER BY started_at DESC
+                    SELECT s.id, s.job_title, s.difficulty, s.duration_min, s.status,
+                           s.overall_score, s.started_at, s.completed_at,
+                           s.role_id, r.name AS role_name, s.interview_type
+                    FROM sessions AS s
+                    LEFT JOIN roles AS r ON r.id = s.role_id
+                    WHERE s.user_id = %s
+                    ORDER BY s.started_at DESC
                     LIMIT %s
                     """,
                     (user_id, limit)
@@ -506,6 +524,8 @@ def get_feedback(session_id) -> dict:
 def save_answer(session_id, question_id, text, is_blank, feedback, correct_count) -> int:
     """Save an answer, its feedback and the session's running correct count in one transaction."""
 
+    feedback = {**FEEDBACK_DEFAULTS, **feedback}
+
     try:
         with _connection() as conn:
             with conn.cursor() as cur:
@@ -529,8 +549,9 @@ def save_answer(session_id, question_id, text, is_blank, feedback, correct_count
                     """
                     INSERT INTO feedback
                         (session_id, question_id, response_id, score, correct,
-                         matched_keywords, missing_keywords, strengths, improvements)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                         matched_keywords, missing_keywords, strengths, improvements,
+                         criteria_met, criteria_missed, evidence, reasons, grader)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """,
                     (
                         session_id,
@@ -541,7 +562,12 @@ def save_answer(session_id, question_id, text, is_blank, feedback, correct_count
                         feedback["matched"],
                         feedback["missing"],
                         feedback["strengths"],
-                        feedback["improvements"]
+                        feedback["improvements"],
+                        feedback["criteria_met"],
+                        feedback["criteria_missed"],
+                        feedback["evidence"],
+                        feedback["reasons"],
+                        feedback["grader"]
                     )
                 )
 
@@ -558,20 +584,117 @@ def save_answer(session_id, question_id, text, is_blank, feedback, correct_count
         ) from exc
 
 
+# ---- S2-1.1 Sprint 2 schema: roles and rubrics ----
+
+def list_roles() -> list:
+    """All roles: [{id, name, keywords, technical_share}]."""
+
+    try:
+        with _connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT id, name, keywords, technical_share FROM roles ORDER BY id"
+                )
+                return [{**r, "technical_share": float(r["technical_share"])}
+                        for r in cur.fetchall()]
+
+    except psycopg.Error as exc:
+        raise PersistenceError(
+            "Could not list roles"
+        ) from exc
+
+
+def get_role(role_id) -> dict | None:
+    """A role with its skill weights: {id, name, keywords, technical_share, skills: {name: weight}}."""
+
+    try:
+        with _connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT id, name, keywords, technical_share FROM roles WHERE id = %s",
+                    (role_id,)
+                )
+                role = cur.fetchone()
+
+                if role is None:
+                    return None
+
+                cur.execute(
+                    """
+                    SELECT s.name, rs.weight
+                    FROM role_skills AS rs
+                    JOIN skills AS s ON s.id = rs.skill_id
+                    WHERE rs.role_id = %s
+                    """,
+                    (role_id,)
+                )
+                skills = {r["name"]: float(r["weight"]) for r in cur.fetchall()}
+                return {**role, "technical_share": float(role["technical_share"]), "skills": skills}
+
+    except psycopg.Error as exc:
+        raise PersistenceError(
+            "Could not retrieve role"
+        ) from exc
+
+
+def get_rubric(question_id) -> list:
+    """A question's rubric criteria in order: [{text, keywords}]. Empty if it has none yet."""
+
+    try:
+        with _connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT text, keywords
+                    FROM rubric_criteria
+                    WHERE question_id = %s
+                    ORDER BY position
+                    """,
+                    (question_id,)
+                )
+                return cur.fetchall()
+
+    except psycopg.Error as exc:
+        raise PersistenceError(
+            "Could not retrieve rubric"
+        ) from exc
+
+
+def _question_dict(q) -> dict:
+    """A question in the S2 dict shape; Sprint 1 tuples (category, difficulty, prompt, keywords) still load."""
+    if not isinstance(q, dict):
+        c, d, p, k = q
+        q = {"category": c, "difficulty": d, "prompt": p, "expected_keywords": k}
+    return {"question_type": "Technical", "skills": [], "rubric": [], **q}
+
+
+def _load_library():
+    """Questions and roles from question_library/, or empty lists for files not merged yet."""
+    from question_library.questions_data import QUESTIONS
+    try:
+        from question_library.behavioral_data import BEHAVIORAL_QUESTIONS
+    except ImportError:
+        BEHAVIORAL_QUESTIONS = []
+    try:
+        from question_library.roles_data import ROLES
+    except ImportError:
+        ROLES = []
+    return list(QUESTIONS) + list(BEHAVIORAL_QUESTIONS), ROLES
+
+
 class MemoryRepository:
     """In-memory store with the same functions as the PostgreSQL ones above.
 
     Used when DATABASE_URL is empty (local demo, tests). Data is lost on restart.
     """
 
-    def __init__(self, questions=None):
-        if questions is None:
-            from question_library.questions_data import QUESTIONS
-            questions = [
-                {"category": c, "difficulty": d, "prompt": p, "expected_keywords": k}
-                for c, d, p, k in QUESTIONS
-            ]
-        self.questions = {i: {**q, "id": i} for i, q in enumerate(questions, start=1)}
+    def __init__(self, questions=None, roles=None):
+        if questions is None or roles is None:
+            lib_questions, lib_roles = _load_library()
+            questions = lib_questions if questions is None else questions
+            roles = lib_roles if roles is None else roles
+        self.questions = {i: {**_question_dict(q), "id": i} for i, q in enumerate(questions, start=1)}
+        self.roles = {i: {**r, "id": i} for i, r in enumerate(roles, start=1)}
         self.sessions = {}
         self.session_questions = {}  # session_id -> [{question_id, q_index}]
         self.responses = {}          # session_id -> {question_id: row}
@@ -579,14 +702,18 @@ class MemoryRepository:
         self._next_session_id = 1
         self._next_response_id = 1
 
-    def create_session(self, user_id, job_title, difficulty, duration_min) -> int:
+    def create_session(self, user_id, job_title, difficulty, duration_min,
+                       role_id=None, interview_type="Technical", timed=False) -> int:
         if duration_min not in QUESTION_COUNTS:
             raise ValueError("Duration must be 15, 30, or 45 minutes")
+        if role_id is not None and role_id not in self.roles:
+            raise PersistenceError("Could not create interview session")  # FK violation in Postgres
         session_id = self._next_session_id
         self._next_session_id += 1
         self.sessions[session_id] = {
             "id": session_id, "user_id": str(user_id), "job_title": job_title,
-            "interview_type": "Technical", "difficulty": difficulty, "duration_min": duration_min,
+            "role_id": role_id, "interview_type": interview_type, "timed": timed,
+            "difficulty": difficulty, "duration_min": duration_min,
             "total_questions": QUESTION_COUNTS[duration_min], "status": "in_progress",
             "overall_score": None, "correct_count": 0,
             "started_at": datetime.now(timezone.utc), "completed_at": None,
@@ -604,8 +731,10 @@ class MemoryRepository:
         mine = [s for s in self.sessions.values() if s["user_id"] == str(user_id)]
         mine.sort(key=lambda s: (s["started_at"], s["id"]), reverse=True)
         keys = ("id", "job_title", "difficulty", "duration_min", "status",
-                "overall_score", "started_at", "completed_at")
-        return [{k: s[k] for k in keys} for s in mine[:limit]]
+                "overall_score", "started_at", "completed_at", "role_id", "interview_type")
+        return [{**{k: s[k] for k in keys},
+                 "role_name": self.roles[s["role_id"]]["name"] if s["role_id"] else None}
+                for s in mine[:limit]]
 
     def get_total_questions(self, session_id):
         s = self.sessions.get(session_id)
@@ -650,7 +779,7 @@ class MemoryRepository:
             "id": response_id, "session_id": session_id, "question_id": question_id,
             "answer_text": text, "is_blank": is_blank, "submitted_at": datetime.now(timezone.utc),
         }
-        self.feedback[session_id][question_id] = {"question_id": question_id, **feedback}
+        self.feedback[session_id][question_id] = {"question_id": question_id, **FEEDBACK_DEFAULTS, **feedback}
         self.sessions[session_id]["correct_count"] = correct_count
         return response_id
 
@@ -674,13 +803,29 @@ class MemoryRepository:
             rows.append({
                 "q_index": asked["q_index"], "question_id": qid,
                 "prompt": q.get("prompt"), "category": q.get("category"),
+                "question_type": q.get("question_type"),
                 "response_id": r.get("id"), "answer_text": r.get("answer_text"),
                 "is_blank": r.get("is_blank"), "submitted_at": r.get("submitted_at"),
                 "score": f.get("score"), "correct": f.get("correct"),
                 "matched_keywords": f.get("matched"), "missing_keywords": f.get("missing"),
                 "strengths": f.get("strengths"), "improvements": f.get("improvements"),
+                "criteria_met": f.get("criteria_met"), "criteria_missed": f.get("criteria_missed"),
+                "evidence": f.get("evidence"), "grader": f.get("grader"),
             })
         return {"session": session, "questions": rows}
+
+    # S2-1.1 roles and rubrics
+    def list_roles(self) -> list:
+        keys = ("id", "name", "keywords", "technical_share")
+        return [{k: r[k] for k in keys} for r in self.roles.values()]
+
+    def get_role(self, role_id):
+        r = self.roles.get(role_id)
+        return {**r, "skills": dict(r["skills"])} if r else None
+
+    def get_rubric(self, question_id) -> list:
+        q = self.questions.get(question_id)
+        return [{"text": c["text"], "keywords": list(c["keywords"])} for c in q["rubric"]] if q else []
 
 
 _memory_repo = None

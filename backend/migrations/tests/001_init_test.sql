@@ -26,7 +26,7 @@ SELECT expect_fail($q$INSERT INTO question_library (category, difficulty, prompt
 -- sessions
 SELECT expect_fail($q$INSERT INTO sessions (user_id, job_title, difficulty, duration_min, total_questions) VALUES (gen_random_uuid(), 'Dev', 'Easy', 20, 5)$q$);
 SELECT expect_fail($q$INSERT INTO sessions (user_id, job_title, difficulty, duration_min, total_questions) VALUES (gen_random_uuid(), 'D', 'Easy', 15, 5)$q$);
-SELECT expect_fail($q$INSERT INTO sessions (user_id, job_title, interview_type, difficulty, duration_min, total_questions) VALUES (gen_random_uuid(), 'Dev', 'Behavioral', 'Easy', 15, 5)$q$);
+SELECT expect_fail($q$INSERT INTO sessions (user_id, job_title, interview_type, difficulty, duration_min, total_questions) VALUES (gen_random_uuid(), 'Dev', 'Trivia', 'Easy', 15, 5)$q$);
 SELECT expect_fail($q$UPDATE sessions SET status = 'completed' WHERE id = 1$q$);
 SELECT expect_fail($q$UPDATE sessions SET completed_at = now() WHERE id = 1$q$);
 SELECT expect_fail($q$UPDATE sessions SET overall_score = 101 WHERE id = 1$q$);
