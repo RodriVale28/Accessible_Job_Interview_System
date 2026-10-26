@@ -1,0 +1,44 @@
+# S2-X.3 Release - owner: Thunder Oyebi
+# Push a v* tag on a commit that is on main (e.g. v1.0-fall at Checkpoint 3):
+#   git checkout main && git pull && git tag v1.0-fall && git push origin v1.0-fall
+# This runs the full CI on the tagged commit, then creates a GitHub release whose notes
+# list the pull requests merged since the previous tag.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    name: create GitHub release
+    needs: ci
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the release
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check the tag is on main
+        run: |
+          git fetch origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::Tag $GITHUB_REF_NAME is not on main. Tag a commit that has been merged to main."
+            exit 1
+          fi
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --title "Interview Studio $GITHUB_REF_NAME" \
+            --generate-notes
