@@ -146,6 +146,7 @@ jobs:
     # Not blocking yet: Sprint 2 pages are changing and S2-X.2 is updating the specs.
     # Remove this line after Checkpoint 2 (Mon Nov 9) so a failing e2e run blocks merging.
     continue-on-error: true
+    timeout-minutes: 25 # installing the browser's system packages alone can take ~10 minutes
     env:
       ALLOW_GUEST: "1" # CI only, never on Render
       DATABASE_URL: ""
