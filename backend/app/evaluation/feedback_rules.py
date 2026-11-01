@@ -10,11 +10,27 @@ def _is_blank(answer):
 
 
 def feedback_for_answer(answer_score, answer=None) -> dict:
-    matched = list(getattr(answer_score, "matched", []) or [])
-    missing = list(getattr(answer_score, "missing", []) or [])
-    score = getattr(answer_score, "score", 0)
-    correct = getattr(answer_score, "correct", False)
-    blank = _is_blank(answer)
+    """Generate feedback from grading criteria, with keyword fallback."""
+
+    blank = answer is not None and not str(answer).strip()
+
+    matched = list(
+        getattr(
+            answer_score,
+            "criteria_met",
+            getattr(answer_score, "matched", []),
+        ) or []
+    )
+    missing = list(
+        getattr(
+            answer_score,
+            "criteria_missed",
+            getattr(answer_score, "missing", []),
+        ) or []
+    )
+
+    score = 0 if blank else getattr(answer_score, "score", 0)
+    correct = False if blank else getattr(answer_score, "correct", False)
 
     if blank:
         status = "blank"
@@ -22,28 +38,30 @@ def feedback_for_answer(answer_score, answer=None) -> dict:
         improvements = BLANK_IMPROVEMENT
         tip = BLANK_TIP
     else:
-        if matched:
-            strengths = (
-                "You demonstrated understanding by mentioning: "
-                + ", ".join(matched)
-                + "."
-            )
-        else:
-            strengths = "Keep practicing how to connect your answer to the question."
+        strengths = (
+            "You demonstrated understanding by mentioning: "
+            + ", ".join(matched[:3]) + "."
+            if matched
+            else "Keep practicing how to connect your answer to the question."
+        )
 
-        if missing:
-            improvements = "Try mentioning " + ", ".join(missing) + "."
-            tip = "Review the missing concepts and explain how they relate to the question."
-        else:
-            improvements = "You included all the expected keywords."
-            tip = "Continue supporting your answers with clear examples."
+        improvements = (
+            "Try mentioning " + ", ".join(missing[:2]) + "."
+            if missing
+            else "You covered the expected points."
+        )
 
-        if correct:
-            status = "correct"
-        elif matched:
-            status = "partial"
-        else:
-            status = "incorrect"
+        tip = (
+            "Review the missing concepts and explain how they relate to the question."
+            if missing
+            else "Continue supporting your answers with clear examples."
+        )
+
+        status = (
+            "correct" if correct
+            else "partial" if matched
+            else "incorrect"
+        )
 
     return {
         "score": score,
@@ -57,8 +75,8 @@ def feedback_for_answer(answer_score, answer=None) -> dict:
         "tip": tip,
     }
 
-
 def session_feedback(answer_scores, answers=None) -> dict:
+    """Summarize feedback across an interview, including skipped questions."""
     answer_scores = list(answer_scores)
 
     if answers is None:
@@ -86,25 +104,37 @@ def session_feedback(answer_scores, answers=None) -> dict:
 
     overall = round(sum(item["score"] for item in results) / len(results))
     correct_count = sum(1 for item in results if item["correct"])
-    unanswered_count = sum(1 for item in results if item["status"] == "blank")
+    unanswered_count = sum(
+        1 for item in results if item["status"] == "blank"
+    )
 
     strengths = [
         item["strengths"]
         for item in results
-        if item["matched"] or item["status"] == "blank"
+        if item["status"] != "blank" and item["matched"]
     ]
+
     improvements = [
         item["improvements"]
         for item in results
-        if item["missing"] or item["status"] == "blank"
+        if item["status"] != "blank" and item["missing"]
     ]
+
+    if unanswered_count:
+        improvements.append(
+            f"You skipped {unanswered_count} questions, "
+            "so those are the ones to work on next."
+        )
 
     return {
         "overall": overall,
         "correct_count": correct_count,
         "total": len(results),
         "unanswered_count": unanswered_count,
-        "strengths": " ".join(strengths) if strengths else "Keep practicing your answers.",
+        "strengths": (
+            " ".join(strengths)
+            if strengths else "Keep practicing your answers."
+        ),
         "improvements": (
             " ".join(improvements)
             if improvements
