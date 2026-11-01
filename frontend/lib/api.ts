@@ -2,7 +2,9 @@
 // Requests go to /api/* on this site and are forwarded to the backend (next.config.mjs).
 import { authHeaders } from './user';
 import { loginRequired } from './supabase';
-import type { Difficulty, Duration, Results, SessionState, SessionSummary } from './types';
+import type {
+  Difficulty, Duration, InterviewType, Results, Role, RoleMatch, SessionState, SessionSummary,
+} from './types';
 
 export class ApiError extends Error {
   constructor(message: string, public status: number) {
@@ -37,8 +39,46 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   return data as T;
 }
 
-export const startSession = (body: { job_title: string; difficulty: Difficulty; duration_min: Duration }) =>
-  api<SessionState>('/api/sessions', { method: 'POST', body: JSON.stringify({ ...body, interview_type: 'Technical' }) });
+// S2-1.3: role_id, interview_type and timed are optional, so older callers keep working.
+export const startSession = (body: {
+  job_title: string;
+  difficulty: Difficulty;
+  duration_min: Duration;
+  role_id?: number | null;
+  interview_type?: InterviewType;
+  timed?: boolean;
+}) =>
+  api<SessionState>('/api/sessions', {
+    method: 'POST',
+    body: JSON.stringify({ interview_type: 'Technical', ...body }),
+  });
+
+// TODO S2-1.3: set to false once GET /api/roles and POST /api/roles/match are merged and live.
+const USE_FAKE_ROLES = true;
+
+const FAKE_ROLES: Role[] = [
+  { id: 1, name: 'Software Engineer' },
+  { id: 2, name: 'Data Analyst' },
+  { id: 3, name: 'IT Support' },
+  { id: 4, name: 'Customer Service' },
+];
+
+export const getRoles = (): Promise<Role[]> =>
+  USE_FAKE_ROLES ? Promise.resolve(FAKE_ROLES) : api<Role[]>('/api/roles');
+
+export const matchRole = (job_title: string): Promise<RoleMatch> => {
+  if (USE_FAKE_ROLES) {
+    // TODO S2-1.3: fake keyword match, removed together with USE_FAKE_ROLES
+    const t = job_title.toLowerCase();
+    const hit =
+      /data|analyst/.test(t) ? FAKE_ROLES[1] :
+      /help desk|technician|it support/.test(t) ? FAKE_ROLES[2] :
+      /call center|customer|agent/.test(t) ? FAKE_ROLES[3] :
+      /software|engineer|developer/.test(t) ? FAKE_ROLES[0] : null;
+    return Promise.resolve({ role_id: hit?.id ?? null, role_name: hit?.name ?? null, matched_by: 'keyword' });
+  }
+  return api<RoleMatch>('/api/roles/match', { method: 'POST', body: JSON.stringify({ job_title }) });
+};
 
 export const getSession = (id: number | string) => api<SessionState>(`/api/sessions/${id}`);
 
