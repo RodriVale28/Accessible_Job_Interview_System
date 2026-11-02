@@ -14,18 +14,20 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.3
-      - key: LLM_MODEL         # the model to use for the interview questions
-        value: gpt-4o-mini
       - key: DATABASE_URL        # Supabase connection string (pooler URI)
         sync: false
       - key: SUPABASE_URL     # https://<project-ref>.supabase.co
         sync: false
       - key: SUPABASE_ANON_KEY          # publishable (or anon) key
         sync: false
-      - key: SECRET_KEY              # Flask session signing; Render generates a random value
-        generateValue: true
-      - key: OPENAI_API_KEY        # your OpenAI key (secret, entered in the dashboard)
-        sync: false
+      - key: AI_ENABLED        # 0 turns ALL AI off; keyword grading takes over
+        value: "1"
+      - key: AI_BASE_URL       # Gemini's OpenAI-compatible endpoint
+        value: https://generativelanguage.googleapis.com/v1beta/openai
+      - key: LLM_MODEL         # current Flash-Lite model name from Google AI Studio
+        value: gemini-3.5-flash-lite
+      - key: AI_TIMEOUT_SECONDS
+        value: "10"
 
   # ---------- Next.js frontend ----------
   - type: web

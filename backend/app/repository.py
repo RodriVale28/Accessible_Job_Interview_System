@@ -65,6 +65,15 @@ def _connection():
             )
     return _pool.connection()
 
+def ping() -> bool:
+    """Check whether the PostgreSQL database is reachable."""
+    try:
+        with _connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT 1")
+                return cur.fetchone() is not None
+    except (psycopg.Error, PersistenceError):
+        return False
 
 # S2-1.1: feedback fields added in Sprint 2; save_answer fills in any that are missing.
 FEEDBACK_DEFAULTS = {
@@ -701,6 +710,10 @@ class MemoryRepository:
         self.feedback = {}           # session_id -> {question_id: row}
         self._next_session_id = 1
         self._next_response_id = 1
+
+        # S2-X.4: Check whether the in-memory repository is available.
+    def ping(self) -> bool:
+        return True
 
     def create_session(self, user_id, job_title, difficulty, duration_min,
                        role_id=None, interview_type="Technical", timed=False) -> int:
