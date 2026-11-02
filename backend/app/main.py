@@ -4,7 +4,7 @@ Run locally (from backend/):  uvicorn app.main:app --reload --port 8000
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import answers, results, sessions
+from app.api import answers, results, roles, sessions
 from app.config import CORS_ORIGINS
 from app.repository import get_repo
 
@@ -36,3 +36,4 @@ def health_db():
 app.include_router(sessions.router, prefix="/api", tags=["sessions"])
 app.include_router(answers.router, prefix="/api", tags=["answers"])
 app.include_router(results.router, prefix="/api", tags=["results"])
+app.include_router(roles.router, prefix="/api", tags=["roles"])  # S2-1.3
