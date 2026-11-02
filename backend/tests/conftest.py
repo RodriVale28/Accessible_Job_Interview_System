@@ -58,9 +58,7 @@ FAKE_ROLES = [
 
 
 @pytest.fixture
-def fake_roles(repo, monkeypatch):
-    """The 4 roles, whether or not S2-1.1 / S2-1.4 have merged (raising=False)."""
-    by_id = {r["id"]: r for r in FAKE_ROLES}
-    monkeypatch.setattr(repo, "list_roles", lambda: [dict(r) for r in FAKE_ROLES], raising=False)
-    monkeypatch.setattr(repo, "get_role", lambda rid: dict(by_id[rid]) if rid in by_id else None, raising=False)
+def fake_roles(repo):
+    """Fill the in-memory store with the 4 roles, whether or not roles_data.py has merged."""
+    repo.roles = {r["id"]: {**r, "skills": {}} for r in FAKE_ROLES}
     return FAKE_ROLES
