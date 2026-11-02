@@ -1,7 +1,7 @@
 """S2-1.3 Tests: sessions accept role_id, interview_type and an optional timer."""
 from datetime import timedelta
 
-import pytest
+
 
 
 def submit(client, user, session, text="A stack uses LIFO, push and pop."):
