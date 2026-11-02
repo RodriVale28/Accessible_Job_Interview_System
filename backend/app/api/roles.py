@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.api.deps import user_id
-from app.repository import PersistenceError, get_repo  # assumption: check where PersistenceError lives
+from app.repository import PersistenceError, get_repo
 from app.services.role_matcher import match_role
 
 router = APIRouter()
