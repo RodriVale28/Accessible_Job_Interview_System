@@ -385,7 +385,7 @@ def pick_question_for(session_id, difficulty, skills=None, question_type=None):
         with _connection() as conn:
             with conn.cursor() as cur:
                 for skill_names, with_difficulty in attempts:
-                    sql = ["SELECT DISTINCT q.id, q.prompt, q.category FROM question_library AS q"]
+                    sql = ["SELECT q.id, q.prompt, q.category FROM question_library AS q"]
                     params = []
                     if skill_names:
                         sql.append(
