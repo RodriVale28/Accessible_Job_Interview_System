@@ -711,7 +711,7 @@ class MemoryRepository:
         self._next_session_id = 1
         self._next_response_id = 1
 
-
+        # S2-X.4: Check whether the in-memory repository is available.
     def ping(self) -> bool:
         return True
 
