@@ -1,4 +1,4 @@
-"""S1-2.2 Question-selection service — owner: Moshood Abisoye"""
+"""S1-2.2 / S2-1.2 Question-selection service and interview builder — owner: Moshood Abisoye"""
 
 
 class NoQuestionAvailable(Exception):
@@ -20,7 +20,8 @@ def _default_repo():
     return repository
 
 
-def next_question(session_id: int, difficulty: str, repo=None) -> dict:
+def next_question(session_id: int, difficulty: str, repo=None,
+                  role_id=None, interview_type: str = "Technical") -> dict:
     """Return the next library question for this session.
 
     Returns id, prompt, category, q_index, total. expected_keywords never leaves
