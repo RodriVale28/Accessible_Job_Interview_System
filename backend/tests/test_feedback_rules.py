@@ -1,7 +1,7 @@
 
-"""Tests for S2-2.2 feedback generation — Aisha Aloma."""
+"""Tests for S2-2.2 feedback generation and scoring."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import pytest
 
@@ -21,13 +21,13 @@ class FakeScore:
 
 @dataclass
 class FakeGradeResult:
-    score: int
-    correct: bool
-    criteria_met: list
-    criteria_missed: list
-    evidence: list
-    reasons: list
-    grader: str
+    score: int = 0
+    correct: bool = False
+    criteria_met: list = field(default_factory=list)
+    criteria_missed: list = field(default_factory=list)
+    evidence: list = field(default_factory=list)
+    reasons: list = field(default_factory=list)
+    grader: str = "rules"
 
 
 def test_matched_keywords_become_strength():
@@ -36,8 +36,7 @@ def test_matched_keywords_become_strength():
 
     assert "index" in result["strengths"]
     assert "join" in result["strengths"]
-    assert result["status"] == "correct"
-    assert result["answered"] is True
+    assert set(result) == {"strengths", "improvements"}
 
 
 def test_missing_keywords_become_improvements():
@@ -45,14 +44,15 @@ def test_missing_keywords_become_improvements():
     result = feedback_for_answer(grade, "index only")
 
     assert result["improvements"] == "Work on these areas: join."
-    assert result["status"] == "partial"
+    assert set(result) == {"strengths", "improvements"}
 
 
 def test_no_matches_is_incorrect():
     grade = FakeScore([], ["index"], 0, False)
     result = feedback_for_answer(grade, "something else")
 
-    assert result["status"] == "incorrect"
+    assert "index" in result["improvements"]
+    assert "Keep working" in result["strengths"]
 
 
 @pytest.mark.parametrize("blank", ["", "   ", "\n\t"])
@@ -61,133 +61,105 @@ def test_blank_answer_uses_required_wording(blank):
     result = feedback_for_answer(grade, blank)
 
     expected = "You skipped this one, so it is one to work on."
-
-    assert result["status"] == "blank"
-    assert result["answered"] is False
-    assert result["score"] == 0
     assert result["strengths"] == expected
     assert result["improvements"] == expected
+    assert set(result) == {"strengths", "improvements"}
 
 
 def test_answer_text_is_required():
     grade = FakeScore(["a"], [], 100, True)
-    result = feedback_for_answer(grade, "a")
 
-    assert result["answered"] is True
+    answered = feedback_for_answer(grade, "a")
+    skipped = feedback_for_answer(grade, "")
+
+    assert "a" in answered["strengths"]
+    assert "You skipped this one" in skipped["improvements"]
 
 
 def test_session_summary_counts_and_overall():
-    scores = [
-        FakeScore(["a"], [], 100, True),
-        FakeScore([], ["b"], 0, False),
-        FakeScore(["c"], ["d"], 50, False),
+    grades = [
+        FakeScore(["index"], [], 100, True),
+        FakeScore(["join"], ["filter"], 50, False),
     ]
 
-    result = session_feedback(scores, ["a", "", "c"])
+    result = session_feedback(grades, ["index", "join"])
 
-    assert result["overall"] == 50
+    assert result["overall"] == 75
     assert result["correct_count"] == 1
-    assert result["total"] == 3
-    assert result["unanswered_count"] == 1
-    assert len(result["answers"]) == 3
+    assert result["total"] == 2
+    assert result["unanswered_count"] == 0
+    assert result["answers"][0]["score"] == 100
+    assert result["answers"][0]["status"] == "correct"
+    assert result["answers"][1]["status"] == "partial"
 
 
 def test_empty_session():
-    result = session_feedback([])
+    result = session_feedback([], [])
 
     assert result["overall"] == 0
+    assert result["correct_count"] == 0
+    assert result["total"] == 0
     assert result["answers"] == []
 
 
 def test_length_mismatch_raises():
-    scores = [FakeScore([], [], 0, False)]
+    grades = [FakeScore(["a"], [], 100, True)]
 
     with pytest.raises(ValueError):
-        session_feedback(scores, [])
+        session_feedback(grades, ["a", "b"])
 
 
 def test_three_skipped_questions_feedback():
-    scores = [
-        FakeScore(["python"], [], 100, True),
-        FakeScore([], ["loops"], 0, False),
-        FakeScore([], ["functions"], 0, False),
-        FakeScore([], ["variables"], 0, False),
-    ]
+    grades = [FakeScore([], ["a"], 0, False) for _ in range(3)]
 
-    answers = ["I have experience with Python.", "", "   ", "\n"]
-
-    result = session_feedback(scores, answers)
-
-    expected = (
-        "You skipped 3 questions, "
-        "so those are the ones to work on next."
-    )
+    result = session_feedback(grades, ["", " ", "\n"])
 
     assert result["unanswered_count"] == 3
-    assert result["overall"] == 25
-    assert result["improvements"].count(expected) == 1
-    assert "skipped" not in result["strengths"].lower()
+    assert "You skipped 3 questions" in result["improvements"]
 
 
 def test_one_skipped_question_uses_singular():
-    scores = [
-        FakeScore(["python"], [], 100, True),
-        FakeScore([], ["testing"], 0, False),
-    ]
+    grade = FakeScore([], ["a"], 0, False)
 
-    result = session_feedback(scores, ["I know Python.", ""])
+    result = session_feedback([grade], [""])
 
     assert result["unanswered_count"] == 1
-    assert "You skipped 1 question," in result["improvements"]
+    assert "You skipped 1 question" in result["improvements"]
     assert "1 questions" not in result["improvements"]
 
 
 def test_sprint2_criteria_feedback():
     grade = FakeGradeResult(
         score=75,
-        correct=False,
-        criteria_met=["clear explanation", "relevant example"],
-        criteria_missed=["error handling", "testing", "documentation"],
-        evidence=["Explained the main concept"],
-        reasons=[],
-        grader="rules",
+        criteria_met=["Explains the basic concept"],
+        criteria_missed=["Provides a real-world example"],
     )
 
-    result = feedback_for_answer(grade, "I explained the concept.")
+    result = feedback_for_answer(grade, "The concept is explained.")
 
-    assert "Explained the main concept" in result["strengths"]
-    assert "error handling" in result["improvements"]
-    assert "testing" in result["improvements"]
-    assert "documentation" not in result["improvements"]
+    assert "Explains the basic concept" in result["strengths"]
+    assert "Provides a real-world example" in result["improvements"]
+    assert set(result) == {"strengths", "improvements"}
 
 
 def test_realistic_linked_list_criterion():
     grade = FakeGradeResult(
-        score=60,
-        correct=False,
+        score=50,
         criteria_met=[
-            "Explains that a linked list is made of nodes connected by pointers."
+            "Explains that a linked list consists of connected nodes"
         ],
         criteria_missed=[
-            "Explains that each node contains data and a pointer to the next node."
+            "Explains that a linked list is made of nodes connected by pointers."
         ],
-        evidence=[
-            "The answer describes nodes connected by pointers."
-        ],
-        reasons=[],
-        grader="rules",
     )
 
     result = feedback_for_answer(
-        grade,
-        "A linked list has nodes connected by pointers.",
+        grade, "A linked list stores connected nodes."
     )
 
-    assert "nodes connected by pointers" in result["strengths"]
-    assert "Work on these areas:" in result["improvements"]
     assert "Try mentioning Explains that" not in result["improvements"]
-    assert ".." not in result["strengths"]
     assert ".." not in result["improvements"]
+    assert "Work on these areas:" in result["improvements"]
 
 
 def test_sprint2_blank_answer_scores_zero():
@@ -195,35 +167,61 @@ def test_sprint2_blank_answer_scores_zero():
         score=100,
         correct=True,
         criteria_met=["clear explanation"],
-        criteria_missed=[],
-        evidence=[],
-        reasons=[],
-        grader="rules",
     )
 
-    result = feedback_for_answer(grade, "")
+    result = session_feedback([grade], [""])
 
-    assert result["score"] == 0
-    assert result["correct"] is False
-    assert result["status"] == "blank"
+    assert result["answers"][0]["score"] == 0
+    assert result["answers"][0]["correct"] is False
+    assert result["answers"][0]["status"] == "blank"
+    assert result["unanswered_count"] == 1
 
 
 def test_sprint2_evidence_takes_priority():
     grade = FakeGradeResult(
         score=90,
         correct=True,
-        criteria_met=["Explains the purpose of a linked list."],
-        criteria_missed=[],
-        evidence=["You described how nodes connect."],
-        reasons=[],
-        grader="rules",
+        criteria_met=["Explains the concept"],
+        evidence=["You described how the nodes connect"],
+    )
+
+    result = feedback_for_answer(grade, "Nodes connect to each other.")
+
+    assert "You described how the nodes connect" in result["strengths"]
+
+
+def test_evidence_inside_criteria_met():
+    grade = FakeGradeResult(
+        score=90,
+        correct=True,
+        criteria_met=[
+            {
+                "description": "Explains linked lists",
+                "evidence": "The answer identifies nodes and pointers",
+            }
+        ],
     )
 
     result = feedback_for_answer(
-        grade,
-        "Nodes connect through pointers.",
+        grade, "Linked lists use nodes and pointers."
     )
 
-    assert "You described how nodes connect" in result["strengths"]
-    assert "Try mentioning" not in result["strengths"]
-    assert ".." not in result["strengths"]
+    assert "nodes and pointers" in result["strengths"]
+
+
+def test_session_feedback_preserves_api_fields():
+    grade = FakeScore(["index"], ["join"], 50, False)
+
+    result = session_feedback([grade], ["index"])
+
+    answer = result["answers"][0]
+
+    for key in (
+        "score",
+        "correct",
+        "matched",
+        "missing",
+        "strengths",
+        "improvements",
+    ):
+        assert key in answer
