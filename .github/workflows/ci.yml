@@ -1,10 +1,26 @@
-# S1-X.1 GitHub Actions CI - owner: Thunder Oyebi
+# S1-X.1 / S2-X.3 GitHub Actions CI - owner: Thunder Oyebi
+# Jobs: backend lint (ruff), backend tests (pytest), migrations on a real Postgres 16,
+# frontend lint + build, end-to-end (Playwright, guest mode).
 name: CI
 
-on: [push, pull_request]
+on:
+  push:
+    branches: ["**"] # branches only: a v* tag runs CI through release.yml instead
+  pull_request:
+  workflow_call: # release.yml runs the same checks before creating a release
+
+permissions:
+  contents: read
+
+# The AI is always off in CI: tests never call it, and there is no key here.
+env:
+  AI_ENABLED: "0"
+  AI_API_KEY: ""
+  LLM_MODEL: ""
 
 jobs:
-  backend:
+  backend-lint:
+    name: backend lint (ruff)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -14,9 +30,101 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      # Pinned so a new ruff release never turns main red on its own. Rules: backend/ruff.toml.
+      - run: pip install ruff==0.8.4
+      - run: ruff check --output-format=github .
+
+  backend:
+    name: backend tests (pytest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DATABASE_URL: "" # in-memory store (MemoryRepository)
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
       - run: pip install -r requirements.txt
-      - run: pytest --continue-on-collection-errors
+      - run: pytest
+
+  migrations:
+    name: migrations (Postgres 16)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: backend/migrations
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGOPTIONS: "-c client_min_messages=warning" # hide "already exists, skipping" notices
+      # Need auth.users, which only exists on Supabase. Never run them here.
+      SUPABASE_ONLY: "002_sessions_auth_users.sql 004_sprint2_auth.sql"
+    steps:
+      - uses: actions/checkout@v4
+      # For each migration (in number order): a fresh database, the earlier migrations,
+      # this one TWICE (it must be safe to re-run), then tests/<name>_test.sql.
+      - name: Run each migration twice, then its test SQL
+        run: |
+          set -euo pipefail
+          sql() { psql -v ON_ERROR_STOP=1 --quiet --no-psqlrc -d "$1" -f "$2"; }
+          applied=()
+          for file in [0-9][0-9][0-9]_*.sql; do
+            if [[ " $SUPABASE_ONLY " == *" $file "* ]]; then
+              echo "Skipping $file (Supabase only)"
+              continue
+            fi
+            name="${file%.sql}"
+            echo "::group::$file"
+            createdb "ci_$name"
+            for prev in "${applied[@]}"; do sql "ci_$name" "$prev"; done
+            sql "ci_$name" "$file"
+            sql "ci_$name" "$file"
+            if [[ -f "tests/${name}_test.sql" ]]; then
+              sql "ci_$name" "tests/${name}_test.sql"
+            else
+              echo "::warning file=backend/migrations/$file::No tests/${name}_test.sql for $file"
+            fi
+            echo "::endgroup::"
+            applied+=("$file")
+          done
+          echo "${applied[@]}" > "$RUNNER_TEMP/applied"
+      # Like the live database: every migration, the seed twice (it must be safe to re-run),
+      # then every migration again on a database that already holds data.
+      - name: Seed the question library on the full schema
+        run: |
+          set -euo pipefail
+          sql() { psql -v ON_ERROR_STOP=1 --quiet --no-psqlrc -d ci_full -f "$1"; }
+          read -ra applied < "$RUNNER_TEMP/applied"
+          createdb ci_full
+          for file in "${applied[@]}"; do sql "$file"; done
+          sql ../question_library/seed_postgres.sql
+          sql ../question_library/seed_postgres.sql
+          for file in "${applied[@]}"; do sql "$file"; done
+          count=$(psql -tA --no-psqlrc -d ci_full -c "SELECT count(*) FROM question_library")
+          echo "question_library has $count questions"
+          [[ "$count" -gt 0 ]]
+
   frontend:
+    name: frontend lint + build
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -26,6 +134,57 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npm run lint
       - run: npm run build
+
+  e2e:
+    name: end-to-end (Playwright, guest mode)
+    runs-on: ubuntu-latest
+    # Not blocking yet: Sprint 2 pages are changing and S2-X.2 is updating the specs.
+    # Remove this line after Checkpoint 2 (Mon Nov 9) so a failing e2e run blocks merging.
+    continue-on-error: true
+    timeout-minutes: 25 # installing the browser's system packages alone can take ~10 minutes
+    env:
+      ALLOW_GUEST: "1" # CI only, never on Render
+      DATABASE_URL: ""
+      API_ORIGIN: http://127.0.0.1:8000
+      NEXT_PUBLIC_SUPABASE_URL: ""
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ""
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install
+        run: |
+          pip install -r backend/requirements.txt
+          cd frontend
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Build the front end
+        working-directory: frontend
+        run: npm run build
+      - name: Start the backend and the front end
+        run: |
+          (cd backend && nohup uvicorn app.main:app --port 8000 > "$RUNNER_TEMP/backend.log" 2>&1 &)
+          (cd frontend && nohup npm run start -- --port 3000 > "$RUNNER_TEMP/frontend.log" 2>&1 &)
+          for url in http://127.0.0.1:8000/health http://127.0.0.1:3000/; do
+            for _ in $(seq 60); do curl -sf "$url" > /dev/null && break; sleep 1; done
+            curl -sf "$url" > /dev/null || { echo "::error::$url did not start"; exit 1; }
+          done
+      - name: Run Playwright
+        working-directory: frontend
+        run: npm run test:e2e
+      - name: Server logs
+        if: failure()
+        run: tail -n 100 "$RUNNER_TEMP/backend.log" "$RUNNER_TEMP/frontend.log"
