@@ -1,67 +1,127 @@
-"""S1-5.2 Feedback-generation rules — owner: Aisha Aloma"""
 
-BLANK_STRENGTH = "No answer was provided."
-BLANK_IMPROVEMENT = "Try answering the question and including relevant keywords."
-BLANK_TIP = "Start by answering the question directly."
+"""S2-2.2 Feedback generation and scoring — owner: Aisha Aloma."""
 
-
-def _is_blank(answer):
-    return answer is not None and not str(answer).strip()
+BLANK_STRENGTH = "You skipped this one, so it is one to work on."
+BLANK_IMPROVEMENT = "You skipped this one, so it is one to work on."
+BLANK_TIP = "Answer the question directly to receive feedback."
 
 
-def feedback_for_answer(answer_score, answer=None) -> dict:
-    """Generate feedback from grading criteria, with keyword fallback."""
+def _is_blank(answer_text):
+    return answer_text is None or not str(answer_text).strip()
 
-    blank = answer is not None and not str(answer).strip()
 
-    matched = list(
-        getattr(
-            answer_score,
-            "criteria_met",
-            getattr(answer_score, "matched", []),
-        ) or []
-    )
-    missing = list(
-        getattr(
-            answer_score,
-            "criteria_missed",
-            getattr(answer_score, "missing", []),
-        ) or []
-    )
+def _clean_text(value):
+    """Remove extra whitespace and trailing punctuation."""
+    return str(value).strip().rstrip(".!? ")
 
-    score = 0 if blank else getattr(answer_score, "score", 0)
-    correct = False if blank else getattr(answer_score, "correct", False)
+
+def _criterion_text(item):
+    """Extract readable text from a grading criterion."""
+    if isinstance(item, dict):
+        value = (
+            item.get("description")
+            or item.get("criterion")
+            or item.get("text")
+            or ""
+        )
+        return _clean_text(value)
+
+    return _clean_text(item)
+
+
+def _evidence_text(item):
+    """Extract readable evidence from a grading result."""
+    if isinstance(item, dict):
+        value = (
+            item.get("evidence")
+            or item.get("text")
+            or item.get("quote")
+            or ""
+        )
+        return _clean_text(value)
+
+    return _clean_text(item)
+
+
+def _grade_items(grade, new_field, legacy_field):
+    """Support Sprint 2 criteria and older keyword results."""
+    items = getattr(grade, new_field, None)
+
+    if items is None:
+        items = getattr(grade, legacy_field, [])
+
+    return list(items or [])
+
+
+def feedback_for_answer(grade, answer_text) -> dict:
+    """Generate natural-language feedback using criteria and evidence."""
+
+    blank = _is_blank(answer_text)
+
+    matched = _grade_items(grade, "criteria_met", "matched")
+    missing = _grade_items(grade, "criteria_missed", "missing")
+    evidence = list(getattr(grade, "evidence", []) or [])
+
+    score = 0 if blank else getattr(grade, "score", 0)
+    correct = False if blank else getattr(grade, "correct", False)
 
     if blank:
-        status = "blank"
         strengths = BLANK_STRENGTH
         improvements = BLANK_IMPROVEMENT
+        status = "blank"
         tip = BLANK_TIP
+
     else:
-        strengths = (
-            "You demonstrated understanding by mentioning: "
-            + ", ".join(matched[:3]) + "."
-            if matched
-            else "Keep practicing how to connect your answer to the question."
-        )
+        evidence_points = [
+            text
+            for item in evidence
+            if (text := _evidence_text(item))
+        ]
 
-        improvements = (
-            "Try mentioning " + ", ".join(missing[:2]) + "."
-            if missing
-            else "You covered the expected points."
-        )
+        met_points = [
+            text
+            for item in matched
+            if (text := _criterion_text(item))
+        ]
 
-        tip = (
-            "Review the missing concepts and explain how they relate to the question."
-            if missing
-            else "Continue supporting your answers with clear examples."
-        )
+        missed_points = [
+            text
+            for item in missing
+            if (text := _criterion_text(item))
+        ]
 
-        status = (
-            "correct" if correct
-            else "partial" if matched
-            else "incorrect"
-        )
+        if evidence_points:
+            strengths = (
+                "Your answer showed: "
+                + "; ".join(evidence_points[:3])
+                + "."
+            )
+        elif met_points:
+            strengths = (
+                "Your answer covered: "
+                + "; ".join(met_points[:3])
+                + "."
+            )
+        else:
+            strengths = "Keep working on explaining your answer clearly."
+
+        if missed_points:
+            improvements = (
+                "Work on these areas: "
+                + "; ".join(missed_points[:2])
+                + "."
+            )
+        else:
+            improvements = "Keep supporting your answers with clear examples."
+
+        tip = "Use specific examples to support your answer."
+
+        if correct:
+            status = "correct"
+        elif matched:
+            status = "partial"
+        else:
+            status = "incorrect"
 
     return {
         "score": score,
@@ -75,16 +135,21 @@ def feedback_for_answer(answer_score, answer=None) -> dict:
         "tip": tip,
     }
 
+
 def session_feedback(answer_scores, answers=None) -> dict:
-    """Summarize feedback across an interview, including skipped questions."""
+    """Summarize feedback across an interview session."""
+
     answer_scores = list(answer_scores)
 
     if answers is None:
         answers = [None] * len(answer_scores)
     else:
         answers = list(answers)
+
         if len(answers) != len(answer_scores):
-            raise ValueError("answers and answer_scores must have the same length.")
+            raise ValueError(
+                "answers and answer_scores must have the same length."
+            )
 
     results = [
         feedback_for_answer(score, answer)
@@ -102,8 +167,14 @@ def session_feedback(answer_scores, answers=None) -> dict:
             "answers": [],
         }
 
-    overall = round(sum(item["score"] for item in results) / len(results))
-    correct_count = sum(1 for item in results if item["correct"])
+    overall = round(
+        sum(item["score"] for item in results) / len(results)
+    )
+
+    correct_count = sum(
+        1 for item in results if item["correct"]
+    )
+
     unanswered_count = sum(
         1 for item in results if item["status"] == "blank"
     )
@@ -121,8 +192,12 @@ def session_feedback(answer_scores, answers=None) -> dict:
     ]
 
     if unanswered_count:
+        question_word = (
+            "question" if unanswered_count == 1 else "questions"
+        )
+
         improvements.append(
-            f"You skipped {unanswered_count} questions, "
+            f"You skipped {unanswered_count} {question_word}, "
             "so those are the ones to work on next."
         )
 
@@ -133,12 +208,13 @@ def session_feedback(answer_scores, answers=None) -> dict:
         "unanswered_count": unanswered_count,
         "strengths": (
             " ".join(strengths)
-            if strengths else "Keep practicing your answers."
+            if strengths
+            else "Keep practicing your answers."
         ),
         "improvements": (
             " ".join(improvements)
             if improvements
-            else "You included the expected keywords across your answers."
+            else "You covered the expected points across your answers."
         ),
         "answers": results,
     }
