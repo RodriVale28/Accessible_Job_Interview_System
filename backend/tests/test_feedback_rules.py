@@ -61,7 +61,8 @@ def test_blank_answer_uses_required_wording(blank):
     result = feedback_for_answer(grade, blank)
 
     expected = "You skipped this one, so it is one to work on."
-    assert result["strengths"] == expected
+    assert result["strengths"] == ""
+    assert "skip" not in result["strengths"].lower()
     assert result["improvements"] == expected
     assert set(result) == {"strengths", "improvements"}
 
@@ -225,3 +226,21 @@ def test_session_feedback_preserves_api_fields():
         "improvements",
     ):
         assert key in answer
+
+
+def test_improvements_capped_at_two_with_a_skip():
+    grades = [FakeScore([], [f"point {i}"], 0, False) for i in range(5)]
+    answers = ["one", "two", "three", "four", ""]
+
+    result = session_feedback(grades, answers)
+
+    assert result["improvements"].count("You skipped 1 question") == 1
+    assert result["improvements"].count("Work on these areas") == 1
+
+
+def test_improvements_capped_at_two_without_skips():
+    grades = [FakeScore([], [f"point {i}"], 0, False) for i in range(4)]
+
+    result = session_feedback(grades, ["one", "two", "three", "four"])
+
+    assert result["improvements"].count("Work on these areas") == 2

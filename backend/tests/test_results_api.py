@@ -34,7 +34,7 @@ def test_full_interview_score_and_label(client, user, start, repo):
 
     body = client.post(f"/api/sessions/{sid}/complete", headers=user).json()
     assert body["overall_score"] == 80  # four perfect answers, one skip
-    assert body["label"] == "Excellent"
+    assert body["label"] == "Strong"
     assert body["correct_count"] == 4
     assert [a["status"] for a in body["answers"]].count("blank") == 1
     assert [a["q_index"] for a in body["answers"]] == [1, 2, 3, 4, 5]
@@ -53,3 +53,38 @@ def test_results_are_private(client, user, start):
     other = {"X-User-Id": "00000000-0000-4000-8000-000000000001"}
     assert client.get(f"/api/sessions/{s['session_id']}/results", headers=other).status_code == 404
     assert client.post(f"/api/sessions/{s['session_id']}/complete", headers=other).status_code == 404
+
+
+# ---- S2-2.2 -----------------------------------------------------------------
+
+def test_soft_labels():
+    from app.api.results import score_label
+    assert [score_label(s) for s in (100, 80, 79, 50, 49, 0)] == [
+        "Strong", "Strong", "Getting there", "Getting there", "Room to grow", "Room to grow"]
+
+
+def test_results_return_role_id_and_timed(client, user, start):
+    s = start(timed=True)
+    body = client.post(f"/api/sessions/{s['session_id']}/complete", headers=user).json()
+    assert body["timed"] is True
+    assert body["role_id"] is None
+
+
+def test_sprint1_answers_fall_back_to_keywords(client, user, start, repo):
+    s = start()
+    keywords = repo.get_question(s["question"]["id"])["expected_keywords"]
+    answer(client, user, s["session_id"], s["question"], keywords[0])
+    first = client.post(f"/api/sessions/{s['session_id']}/complete", headers=user).json()["answers"][0]
+    assert first["question_type"] == "Technical"
+    assert first["criteria_met"] == first["matched"] == [keywords[0]]
+    assert first["criteria_missed"] == first["missing"] == keywords[1:]
+    assert first["evidence"] == []
+
+
+def test_skip_never_appears_in_strengths(client, user, start):
+    s = start()
+    answer(client, user, s["session_id"], s["question"], "")
+    body = client.post(f"/api/sessions/{s['session_id']}/complete", headers=user).json()
+    assert "skip" not in body["answers"][0]["strengths"].lower()
+    assert "skip" not in body["strengths"].lower()
+    assert "You skipped" in body["improvements"]  # the skip lives under improvements only

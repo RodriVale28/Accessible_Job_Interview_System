@@ -1,7 +1,8 @@
 
 """S2-2.2 Feedback generation and scoring — owner: Aisha Aloma."""
 
-BLANK_STRENGTH = "You skipped this one, so it is one to work on."
+BLANK_STRENGTH = ""  # skips never appear under strengths
+MAX_IMPROVEMENTS = 2
 BLANK_IMPROVEMENT = "You skipped this one, so it is one to work on."
 BLANK_TIP = "Answer the question directly to receive feedback."
 
@@ -208,10 +209,14 @@ def session_feedback(answer_scores, answers=None) -> dict:
         question_word = (
             "question" if unanswered_count == 1 else "questions"
         )
+        # The skip line always shows, so it takes one of the 2 improvement slots.
+        improvements = improvements[:MAX_IMPROVEMENTS - 1]
         improvements.append(
             f"You skipped {unanswered_count} {question_word}, "
             "so those are the ones to work on next."
         )
+    else:
+        improvements = improvements[:MAX_IMPROVEMENTS]
 
     return {
         "overall": overall,
