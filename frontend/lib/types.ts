@@ -55,6 +55,11 @@ export type AnswerResult = {
   missing: string[];
   strengths: string;
   improvements: string;
+  question_type: string | null; // S2-2.2
+  criteria_met: string[]; // S2-2.2
+  criteria_missed: string[]; // S2-2.2
+  evidence: string[]; // S2-2.2, one quote per criteria_met item
+  grader: 'ai' | 'keyword' | null; // S2-2.2
 };
 
 export type Results = {
@@ -73,6 +78,8 @@ export type Results = {
   improvements: string;
   completed_at: string | null;
   answers: AnswerResult[];
+  role_id: number | null; // S2-2.2 (for Retry)
+  timed: boolean; // S2-2.2 (for Retry)
 };
 
 // One row of GET /api/sessions (past interviews, newest first)
