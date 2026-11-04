@@ -1,4 +1,5 @@
 """S1-1.2 Start-session API (FastAPI) — owner: Owen Erickson
+S2-1.3 adds role_id, interview_type (Technical / Behavioral / Mixed) and an optional timer.
 
 POST /api/sessions
     Takes the interview setup form (job title, difficulty, duration), validates it,
@@ -28,7 +29,9 @@ router = APIRouter()
 # Models
 # --------------------------------------------------------------------------
 class InterviewType(str, Enum):
-    technical = "Technical"  # Sprint 1: technical interviews only
+    technical = "Technical"
+    behavioral = "Behavioral"
+    mixed = "Mixed"
 
 
 class Difficulty(str, Enum):
@@ -46,6 +49,8 @@ class SessionCreate(BaseModel):
     interview_type: InterviewType = InterviewType.technical
     difficulty: Difficulty
     duration_min: int = Field(..., examples=[15])
+    role_id: Optional[int] = None  # S2-1.3: from POST /api/roles/match or the user's own pick
+    timed: bool = False  # S2-1.3: the countdown is optional and off by default
 
     @field_validator("job_title")
     @classmethod
@@ -89,8 +94,19 @@ class SessionState(BaseModel):
     correct_count: int
     question: Optional[QuestionOut]
     started_at: datetime
-    expires_at: datetime
-    seconds_left: int
+    expires_at: Optional[datetime] = None  # None when the interview is not timed
+    seconds_left: Optional[int] = None  # None when the interview is not timed
+    role_name: Optional[str] = None
+    timed: bool = False
+
+
+def _role_name(repo, s: dict) -> Optional[str]:
+    """Name of the session's role, or None for role-less (Sprint 1 style) interviews."""
+    role_id = s.get("role_id")
+    if role_id is None:
+        return None
+    role = repo.get_role(role_id)
+    return role["name"] if role else None
 
 
 def session_state(repo, s: dict) -> SessionState:
@@ -101,6 +117,7 @@ def session_state(repo, s: dict) -> SessionState:
         q_index=q_index, total=s["total_questions"], correct_count=s["correct_count"],
         question=QuestionOut(**current) if current and s["status"] == "in_progress" else None,
         started_at=s["started_at"], expires_at=expires_at(s), seconds_left=seconds_left(s),
+        role_name=_role_name(repo, s), timed=bool(s.get("timed")),
     )
 
 
@@ -114,13 +131,23 @@ def session_state(repo, s: dict) -> SessionState:
     summary="Start a technical interview session",
     responses={
         404: {"description": "No questions available for this configuration"},
-        422: {"description": "Invalid setup data (blank job title, bad duration, etc.)"},
+        422: {"description": "Invalid setup data (blank job title, bad duration, unknown role, etc.)"},
         503: {"description": "The session could not be saved"},
     },
 )
 def start_session(body: SessionCreate, uid: str = Depends(user_id), repo=Depends(get_repo)) -> SessionState:
     try:
-        session_id = repo.create_session(uid, body.job_title, body.difficulty.value, body.duration_min)
+        if body.role_id is not None and repo.get_role(body.role_id) is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="That role is not available. Please pick one from the list.",
+            )
+        session_id = repo.create_session(
+            uid, body.job_title, body.difficulty.value, body.duration_min,
+            role_id=body.role_id, interview_type=body.interview_type.value, timed=body.timed,
+        )
+        # TODO S2-1.2: once the new next_question signature is merged, also pass
+        # role_id=body.role_id, interview_type=body.interview_type.value
         qs.next_question(session_id, body.difficulty.value, repo=repo)
         s = repo.get_session(session_id, uid)
     except qs.NoQuestionAvailable as exc:
@@ -153,6 +180,8 @@ class SessionSummary(BaseModel):
     overall_score: Optional[int] = None
     started_at: datetime
     completed_at: Optional[datetime] = None
+    role_name: Optional[str] = None  # S2-1.3
+    interview_type: str = "Technical"  # S2-1.3
 
 
 @router.get("/sessions", response_model=list[SessionSummary], summary="List the user's past interviews")

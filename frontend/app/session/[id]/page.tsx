@@ -69,7 +69,7 @@ export default function SessionPage() {
         }
         setState(s);
         setAnswered(s.q_index - 1);
-        setDeadline(Date.now() + s.seconds_left * 1000);
+        if (s.seconds_left !== null) setDeadline(Date.now() + s.seconds_left * 1000); // S2-1.3: untimed = no countdown
         setMessages([
           msg({
             who: 'ai', kind: 'intro',

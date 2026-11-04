@@ -1,0 +1,14 @@
+# S2-X.3 Python lint (ruff) - owner: Thunder Oyebi
+# Run from backend/:  pip install ruff==0.8.4  then  ruff check .
+# Lint only: CI never runs `ruff format`, so nobody's files get reformatted.
+target-version = "py312"
+
+[lint]
+# Ruff's default rule set, written out so a ruff upgrade cannot change it:
+# E4/E7/E9 = real errors (bad imports, comparisons, syntax), F = pyflakes
+# (unused imports and variables, undefined names).
+select = ["E4", "E7", "E9", "F"]
+
+[lint.per-file-ignores]
+# `typing.Any` is imported but unused on main. Remove this line once that import goes.
+"app/repository.py" = ["F401"]

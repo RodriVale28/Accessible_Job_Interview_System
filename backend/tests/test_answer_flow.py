@@ -312,8 +312,8 @@ def test_unauthorized_answer_does_not_change_state(
 
 
 def test_answer_after_expiration_is_rejected(client, user, start, repo):
-    """An expired interview must reject additional answers."""
-    session = start()
+    """An expired timed interview must reject additional answers."""
+    session = start(timed=True)
     sid = session["session_id"]
 
     # Move the start time back instead of making the test wait.
