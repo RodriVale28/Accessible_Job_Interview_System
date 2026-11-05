@@ -2,7 +2,9 @@
 // Requests go to /api/* on this site and are forwarded to the backend (next.config.mjs).
 import { authHeaders } from './user';
 import { loginRequired } from './supabase';
-import type { Difficulty, Duration, Results, SessionState, SessionSummary } from './types';
+import type {
+  Difficulty, Duration, InterviewType, Results, Role, RoleMatch, SessionState, SessionSummary,
+} from './types';
 
 export class ApiError extends Error {
   constructor(message: string, public status: number) {
@@ -37,8 +39,25 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   return data as T;
 }
 
-export const startSession = (body: { job_title: string; difficulty: Difficulty; duration_min: Duration }) =>
-  api<SessionState>('/api/sessions', { method: 'POST', body: JSON.stringify({ ...body, interview_type: 'Technical' }) });
+// S2-1.3: role_id, interview_type and timed are optional, so older callers keep working.
+export const startSession = (body: {
+  job_title: string;
+  difficulty: Difficulty;
+  duration_min: Duration;
+  role_id?: number | null;
+  interview_type?: InterviewType;
+  timed?: boolean;
+}) =>
+  api<SessionState>('/api/sessions', {
+    method: 'POST',
+    body: JSON.stringify({ interview_type: 'Technical', ...body }),
+  });
+
+// TODO S2-1.3: set to false once GET /api/roles and POST /api/roles/match are merged and live.
+export const getRoles = () => api<Role[]>('/api/roles');
+
+export const matchRole = (job_title: string) =>
+  api<RoleMatch>('/api/roles/match', { method: 'POST', body: JSON.stringify({ job_title }) });
 
 export const getSession = (id: number | string) => api<SessionState>(`/api/sessions/${id}`);
 

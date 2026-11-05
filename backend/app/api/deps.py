@@ -56,13 +56,27 @@ def _aware(dt: datetime) -> datetime:
     return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 
-def expires_at(session: dict) -> datetime:
+def is_timed(session: dict) -> bool:
+    """S2-1.3: only timed interviews have a countdown. Older rows have no flag = untimed."""
+    return bool(session.get("timed"))
+
+
+def expires_at(session: dict) -> datetime | None:
+    if not is_timed(session):
+        return None
     return _aware(session["started_at"]) + timedelta(minutes=session["duration_min"])
 
 
-def seconds_left(session: dict) -> int:
-    return max(0, int((expires_at(session) - datetime.now(timezone.utc)).total_seconds()))
+def seconds_left(session: dict) -> int | None:
+    end = expires_at(session)
+    if end is None:
+        return None
+    return max(0, int((end - datetime.now(timezone.utc)).total_seconds()))
 
 
 def time_is_up(session: dict) -> bool:
-    return datetime.now(timezone.utc) > expires_at(session) + timedelta(seconds=TIMER_GRACE_SECONDS)
+    """Untimed interviews never run out of time, so answers are never refused for it."""
+    end = expires_at(session)
+    if end is None:
+        return False
+    return datetime.now(timezone.utc) > end + timedelta(seconds=TIMER_GRACE_SECONDS)
