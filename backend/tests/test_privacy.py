@@ -9,6 +9,10 @@ Covers sessions, answers, results, discard and history (by id), practice and set
 (no id: Mallory never sees Alice's saved data), forged logins, and 401 on every endpoint.
 test_every_routed_object_has_an_access_test fails when a new /api route takes an id
 that no test here covers, so new endpoints cannot skip this check.
+
+NOTE: the discard, practice and settings tests (marked "S2-4.1" below) are NOT skipped
+and FAIL until S2-4.1 (Sublime Mpanda: practice, settings, discard endpoints) is merged.
+They are written against the locked contract, so they should pass once it lands.
 """
 import copy
 import json
@@ -268,9 +272,17 @@ def _swap_sub(headers, sub):
     return f"{head}.{payload}.{sig}"
 
 
+# --- S2-4.1 tests: these FAIL until S2-4.1 is merged (see the note at the top) --------
+
+NOT_MERGED = "S2-4.1 not merged yet (expected failure until it lands): "
+
+
+def assert_ok(r):
+    assert r.status_code == 200, NOT_MERGED + f"{r.request.method} {r.request.url.path} answered {r.status_code}"
+
+
 # --- discard (S2-4.1) ---------------------------------------------------------------
 
-@pytest.mark.skip(reason="waiting for S2-4.1")
 def test_cannot_discard_another_users_session(client, repo):
     s = start(client, ALICE, ALICE_TITLE)
     before = snapshot(repo)
@@ -278,6 +290,7 @@ def test_cannot_discard_another_users_session(client, repo):
     r = client.delete(f"/api/sessions/{s['session_id']}", headers=MALLORY)
     missing = client.delete(f"/api/sessions/{MISSING_ID}", headers=MALLORY)
 
+    assert missing.status_code == 404, NOT_MERGED + f"DELETE /api/sessions/<id> answered {missing.status_code}"
     assert r.status_code == 404
     assert r.json() == missing.json()
     assert snapshot(repo) == before
@@ -296,28 +309,25 @@ def alice_practice(client, repo):
     """Alice has practised a question; returns its id."""
     qid = next(iter(repo.questions))
     r = practice_answer(client, ALICE, qid, ALICE_ANSWER)
-    assert r.status_code == 200, r.text
+    assert_ok(r)
     return qid
 
 
-@pytest.mark.skip(reason="waiting for S2-4.1")
 def test_practice_question_shows_nothing_of_another_users_attempt(client, alice_practice):
     r = client.post("/api/practice/question", headers=MALLORY, json={"question_id": alice_practice})
 
-    assert r.status_code == 200, r.text
+    assert_ok(r)
     assert_no_alice_data(r)
 
 
-@pytest.mark.skip(reason="waiting for S2-4.1")
 def test_practice_result_holds_only_your_own_answer(client, alice_practice):
     r = practice_answer(client, MALLORY, alice_practice, "Mallory's own answer about stacks")
 
-    assert r.status_code == 200, r.text
+    assert_ok(r)
     assert r.json()["answer"] == "Mallory's own answer about stacks"
     assert_no_alice_data(r)
 
 
-@pytest.mark.skip(reason="waiting for S2-4.1")
 def test_practice_ignores_a_user_id_in_the_body(client, alice_practice):
     r = client.post("/api/practice/answer", headers=MALLORY,
                     json={"question_id": alice_practice, "text": "x", "user_id": ALICE_ID})
@@ -335,27 +345,24 @@ DEFAULT_SETTINGS = {"text_size": "md", "theme": "light", "font": "default", "rea
 @pytest.fixture
 def alice_settings(client):
     r = client.put("/api/settings", headers=ALICE, json=ALICE_SETTINGS)
-    assert r.status_code == 200, r.text
+    assert_ok(r)
 
 
 def settings_of(client, headers, query=""):
     r = client.get("/api/settings" + query, headers=headers)
-    assert r.status_code == 200, r.text
+    assert_ok(r)
     return r.json()
 
 
-@pytest.mark.skip(reason="waiting for S2-4.1")
 def test_new_user_gets_defaults_not_another_users_settings(client, alice_settings):
     assert settings_of(client, MALLORY) == DEFAULT_SETTINGS
 
 
-@pytest.mark.skip(reason="waiting for S2-4.1")
 @pytest.mark.parametrize("query", ["?user_id={alice}", "?uid={alice}"])
 def test_settings_ignore_a_user_id_in_the_query(client, alice_settings, query):
     assert settings_of(client, MALLORY, query.format(alice=ALICE_ID)) == DEFAULT_SETTINGS
 
 
-@pytest.mark.skip(reason="waiting for S2-4.1")
 def test_cannot_change_another_users_settings_through_the_body(client, alice_settings):
     r = client.put("/api/settings", headers=MALLORY, json={**MALLORY_SETTINGS, "user_id": ALICE_ID})
 
@@ -363,7 +370,6 @@ def test_cannot_change_another_users_settings_through_the_body(client, alice_set
     assert settings_of(client, ALICE) == ALICE_SETTINGS
 
 
-@pytest.mark.skip(reason="waiting for S2-4.1")
 def test_cannot_reach_another_users_settings_through_the_path(client, alice_settings):
     for method in ("GET", "PUT", "PATCH", "DELETE"):
         r = call(client, method, f"/api/settings/{ALICE_ID}", MALLORY, MALLORY_SETTINGS)
@@ -373,7 +379,6 @@ def test_cannot_reach_another_users_settings_through_the_path(client, alice_sett
     assert settings_of(client, ALICE) == ALICE_SETTINGS
 
 
-@pytest.mark.skip(reason="waiting for S2-4.1")
 def test_saving_your_settings_leaves_others_alone(client, alice_settings):
     assert client.put("/api/settings", headers=MALLORY, json=MALLORY_SETTINGS).status_code == 200
 
@@ -383,10 +388,10 @@ def test_saving_your_settings_leaves_others_alone(client, alice_settings):
 
 # --- every endpoint in the contract needs a login --------------------------------------
 
-@pytest.mark.skip(reason="waiting for S2-4.1")
 @pytest.mark.parametrize("method,path", [
     ("DELETE", "/api/sessions/1"), ("POST", "/api/practice/question"), ("POST", "/api/practice/answer"),
     ("GET", "/api/settings"), ("PUT", "/api/settings"),
 ])
 def test_s2_4_1_endpoints_require_login(client, method, path):
-    assert call(client, method, path, {}).status_code == 401
+    r = call(client, method, path, {})
+    assert r.status_code == 401, NOT_MERGED + f"{method} {path} answered {r.status_code}"
