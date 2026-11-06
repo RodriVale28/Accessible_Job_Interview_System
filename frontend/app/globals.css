@@ -194,3 +194,25 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* S2-4.2 practice and history additions */
+.practice-settings{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:14px;align-items:end;margin:18px 0 24px}
+.practice-settings select{width:100%;min-height:44px;padding:9px 11px;border:1px solid var(--line-strong);border-radius:10px;background:var(--surface-2);color:var(--ink);font:inherit}
+.practice-question{border-top:1px solid var(--line);padding-top:20px}
+.practice-qhead{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:18px}
+.practice-qhead h2{font-family:var(--font-display);font-size:calc(var(--fs-read) + 5px);line-height:1.35;margin:0}
+.practice-question form{display:grid;gap:10px}
+.practice-question textarea{margin-bottom:8px}
+.practice-result{margin-top:20px;padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2)}
+.practice-result h2{font-family:var(--font-display);margin:0 0 10px}
+.practice-result h3{font-size:15px;margin:16px 0 6px}
+.practice-result ul{padding-left:22px}
+.past-list{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.past-row{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 0;border-top:1px solid var(--line)}
+.past-row h3{font-size:16px;margin:0}
+.past-row p{margin:3px 0 0}
+.past-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.past-actions .btn{min-height:38px;padding:8px 13px;font-size:13px}
+.discard-confirm{display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:var(--ink)}
+.question-tools{display:flex;justify-content:flex-end;padding:0 20px 10px;border-bottom:1px solid var(--line)}
+@media(max-width:620px){.practice-qhead,.past-row{align-items:stretch;flex-direction:column}.past-actions{justify-content:flex-start}}
