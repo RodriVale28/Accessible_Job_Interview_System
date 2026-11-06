@@ -3,7 +3,7 @@
 import { authHeaders } from './user';
 import { loginRequired } from './supabase';
 import type {
-  Difficulty, Duration, InterviewType, Results, Role, RoleMatch, SessionState, SessionSummary,
+  Difficulty, Duration, InterviewType, PracticeResult, Question, Results, Role, RoleMatch, SessionState, SessionSummary,
 } from './types';
 
 export class ApiError extends Error {
@@ -67,3 +67,39 @@ export const completeSession = (id: number | string) =>
 export const getResults = (id: number | string) => api<Results>(`/api/sessions/${id}/results`);
 
 export const listSessions = () => api<SessionSummary[]>('/api/sessions');
+
+// TODO S2-4.1: replace practice stand-ins when the practice endpoints are merged.
+const PRACTICE_QUESTIONS: Question[] = [
+  { id: 1, prompt: 'How would you explain a technical idea to someone who is new to it?', category: 'Communication' },
+  { id: 2, prompt: 'Tell me about a time you solved a difficult problem.', category: 'Behavioral' },
+  { id: 3, prompt: 'How do you prioritize tasks when several deadlines are close?', category: 'Planning' },
+];
+
+export async function getPracticeQuestion(input: { question_id?: number; role_id?: number; skill?: string; interview_type?: InterviewType; difficulty?: Difficulty }): Promise<Question> {
+  const selected = PRACTICE_QUESTIONS.find((q) => q.id === input.question_id) ?? PRACTICE_QUESTIONS[0];
+  return selected;
+}
+
+export async function submitPracticeAnswer(input: { question_id: number; text: string }): Promise<PracticeResult> {
+  const question = PRACTICE_QUESTIONS.find((q) => q.id === input.question_id) ?? PRACTICE_QUESTIONS[0];
+  const answered = input.text.trim().length > 0;
+  const score = answered ? 70 : 0;
+  return {
+    question_id: question.id,
+    prompt: question.prompt,
+    answer: input.text,
+    score,
+    correct: score >= 50,
+    criteria_met: answered ? ['Shares a clear and relevant response.'] : [],
+    criteria_missed: answered ? ['Adds a specific example or next step.'] : ['Share an example or approach you would use.'],
+    evidence: answered ? [input.text.trim()] : [],
+    grader: 'keyword',
+    strengths: answered ? 'You shared a clear starting point.' : 'You can take your time and try this question when you are ready.',
+    improvements: answered ? 'Add one specific example to make your answer easier to follow.' : 'Try answering with one example or step.',
+  };
+}
+
+// TODO S2-4.1: use the DELETE endpoint once the discard router is merged.
+export async function discardSession(_id: number | string): Promise<void> {
+  return;
+}
