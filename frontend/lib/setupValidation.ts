@@ -12,8 +12,9 @@ export type SetupForm = {
 };
 
 
-export type FieldErrors =
-  Partial<Record<keyof SetupForm, string>>;
+export type FieldName = Exclude<keyof SetupForm, 'rolesAvailable'>;
+
+export type FieldErrors = Partial<Record<FieldName, string>>;
 
 export const DIFFICULTIES = [
   'Easy',
@@ -77,7 +78,7 @@ export function validateSetup(
   if (
     form.rolesAvailable !== false &&
     (!Number.isInteger(form.roleId) ||
-    (form.roleId ?? 0) <= 0
+    (form.roleId ?? 0) <= 0)
   ) {
     errors.roleId =
       'Choose the role you want to practice for.';
@@ -96,7 +97,7 @@ export function validateSetup(
   return errors;
 }
 
-export const FIELD_ORDER: (keyof SetupForm)[] = [
+export const FIELD_ORDER: FieldName[] = [
   'jobTitle',
   'roleId',
   'interviewType',
