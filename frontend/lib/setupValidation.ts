@@ -2,12 +2,15 @@
 // S2-1.5 Interview setup validation — owner: Kobra Amiri
 
 export type SetupForm = {
+
   jobTitle: string;
   difficulty?: string;
   durationMin?: number;
   roleId?: number | null;
   interviewType?: string;
+  rolesAvailable?: boolean;
 };
+
 
 export type FieldErrors =
   Partial<Record<keyof SetupForm, string>>;
@@ -32,6 +35,7 @@ export const INTERVIEW_TYPES = [
 
 export function validateSetup(
   form: SetupForm
+  
 ): FieldErrors {
   const errors: FieldErrors = {};
   const title = form.jobTitle.trim();
@@ -71,7 +75,8 @@ export function validateSetup(
   }
 
   if (
-    !Number.isInteger(form.roleId) ||
+    form.rolesAvailable !== false &&
+    (!Number.isInteger(form.roleId) ||
     (form.roleId ?? 0) <= 0
   ) {
     errors.roleId =
