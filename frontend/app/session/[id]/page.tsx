@@ -234,6 +234,7 @@ export default function SessionPage() {
           <form className="answer-area" onSubmit={onSubmit}>
             <div className="assist-row">
               <span className="spacer" />
+              <Link className="guide-btn" href="/">Leave and resume later</Link>
               <button className="guide-btn" type="button" disabled={busy} onClick={() => void send('')}>Skip question</button>
               <button className="guide-btn end" type="button" disabled={busy} onClick={() => void finish()}>End now</button>
             </div>
