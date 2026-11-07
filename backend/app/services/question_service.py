@@ -1,5 +1,5 @@
-"""S1-2.2 Question-selection service — owner: Moshood Abisoye"""
-
+"""S1-2.2 / S2-1.2 Question-selection service and interview builder — owner: Moshood Abisoye"""
+import random
 
 class NoQuestionAvailable(Exception):
     """No question can be returned.
@@ -20,7 +20,8 @@ def _default_repo():
     return repository
 
 
-def next_question(session_id: int, difficulty: str, repo=None) -> dict:
+def next_question(session_id: int, difficulty: str, repo=None,
+                  role_id=None, interview_type: str = "Technical") -> dict:
     """Return the next library question for this session.
 
     Returns id, prompt, category, q_index, total. expected_keywords never leaves
@@ -36,7 +37,25 @@ def next_question(session_id: int, difficulty: str, repo=None) -> dict:
     if asked >= total:
         raise NoQuestionAvailable("All questions for this session have been asked.", "session_complete")
 
-    question = repo.pick_unused_question(session_id, difficulty)
+    if role_id is None and interview_type == "Technical":
+        question = repo.pick_unused_question(session_id, difficulty)  # Sprint 1 behaviour
+    else:
+        role = repo.get_role(role_id) if role_id is not None else None
+        skills = None
+        if role and role.get("skills"):
+            names, weights = zip(*role["skills"].items())
+            skills = [random.choices(names, weights=weights, k=1)[0]]
+        if interview_type == "Mixed":
+            share = role["technical_share"] if role else 0.5
+            technical = repo.count_session_question_types(session_id).get("Technical", 0)
+            wanted = int(share * (asked + 1) + 0.5)
+            qtype = "Technical" if technical < wanted else "Behavioral"
+        else:
+            qtype = interview_type
+        question = repo.pick_question_for(session_id, difficulty, skills, qtype)
+        if question is None and interview_type == "Mixed":
+            other = "Behavioral" if qtype == "Technical" else "Technical"
+            question = repo.pick_question_for(session_id, difficulty, None, other)
     if question is None:
         raise NoQuestionAvailable(f"No {difficulty} questions available.", "library_empty")
 
