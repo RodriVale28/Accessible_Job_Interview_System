@@ -1,5 +1,10 @@
 
-"""S1-5.1 Rule-based KeywordEvaluator — owner: Prince Nnadi"""
+"""S1-5.1 Rule-based KeywordEvaluator — owner: Prince Nnadi
+
+S2-2.1: also grades rubric criteria (the basic backup grader). A criterion is met when at
+least half of its keywords appear in the answer. This is basic on purpose: it cannot catch
+wrong sentences or keyword stuffing, which is the AI grader's job (app/evaluation/ai_grader.py).
+"""
 from dataclasses import dataclass
 
 
@@ -63,3 +68,15 @@ class KeywordEvaluator:
             "average_score": average_score,
             "correct_count": correct_count
         }
+
+    def criterion_met(self, answer: str, keywords: list) -> tuple[bool, list]:
+        """S2-2.1: (met, keywords found) for one rubric criterion.
+
+        Met when at least half of the criterion's keywords appear (case-insensitive).
+        A criterion with no keywords can never be met by keyword grading.
+        """
+        if not answer or not answer.strip() or not keywords:
+            return False, []
+        answer_lower = answer.lower()
+        found = [k for k in keywords if k.lower() in answer_lower]
+        return len(found) * 2 >= len(keywords), found
