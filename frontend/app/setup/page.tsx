@@ -44,13 +44,15 @@ export default function SetupPage() {
 
   const [jobTitle, setJobTitle] = useState('');
   const [roles, setRoles] = useState<Role[]>([]);
+  const [rolesLoading, setRolesLoading] = useState(true);
+  const rolesAvailable = roles.length > 0;
   const [roleId, setRoleId] = useState<number | null>(null);
   const [roleMessage, setRoleMessage] = useState('');
-  const [rolesError, setRolesError] = useState('');
   const [matching, setMatching] = useState(false);
 
   const [interviewType, setInterviewType] =
     useState<InterviewType>('Mixed');
+  const [typeChosenByUser, setTypeChosenByUser] = useState(false);
   const [difficulty, setDifficulty] =
     useState<Difficulty>('Medium');
   const [durationMin, setDurationMin] =
@@ -79,13 +81,12 @@ export default function SetupPage() {
       .then((items) => {
         if (active) {
           setRoles(items);
+          setRolesLoading(false);
         }
       })
       .catch(() => {
         if (active) {
-          setRolesError(
-            'Roles are unavailable right now. Please try refreshing the page.'
-          );
+          setRolesLoading(false);
         }
       });
 
@@ -107,11 +108,16 @@ export default function SetupPage() {
     }));
   }
 
-  async function findRole() {
+  async function findRole(): Promise<number | null> {
     const title = jobTitle.trim();
 
+    if (!rolesAvailable) {
+      setRoleId(null);
+      return null;
+    }
+
     if (title.length < 2 || !/\p{L}/u.test(title)) {
-      return;
+      return null;
     }
 
     const current = ++requestId.current;
@@ -122,14 +128,15 @@ export default function SetupPage() {
       const result = await matchRole(title);
 
       if (current !== requestId.current) {
-        return;
+        return null;
       }
 
       const found =
         result.role_id !== null &&
         roles.some((role) => role.id === result.role_id);
 
-      setRoleId(found ? result.role_id : null);
+      const matchedId = found ? result.role_id : null;
+      setRoleId(matchedId);
 
       if (found) {
         const name =
@@ -140,11 +147,13 @@ export default function SetupPage() {
           `We matched this to ${name}. You can change it below.`
         );
 
-        setInterviewType(
-          name?.toLowerCase() === 'customer service'
-            ? 'Behavioral'
-            : 'Mixed'
-        );
+        if (!typeChosenByUser) {
+          setInterviewType(
+            name?.toLowerCase() === 'customer service'
+              ? 'Behavioral'
+              : 'Mixed'
+          );
+        }
 
         clearError('roleId');
       } else {
@@ -152,14 +161,16 @@ export default function SetupPage() {
           'We could not find a close match. Please choose a role below.'
         );
       }
+      return matchedId;
     } catch {
       if (current !== requestId.current) {
-        return;
+        return null;
       }
 
       setRoleMessage(
         'Automatic matching is unavailable. Please choose a role below.'
       );
+      return null;
     } finally {
       if (current === requestId.current) {
         setMatching(false);
@@ -179,13 +190,23 @@ export default function SetupPage() {
     target?.current?.focus();
   }
 
-  function handleContinue(event: FormEvent<HTMLFormElement>) {
+  async function handleContinue(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError('');
 
+    // Wait for roles to load before deciding whether a role is required.
+    if (rolesLoading) return;
+
+    let selectedRoleId = roleId;
+    if (rolesAvailable && selectedRoleId === null &&
+        jobTitle.trim().length >= 2 && /\p{L}/u.test(jobTitle)) {
+      selectedRoleId = await findRole();
+    }
+
     const errors = validateSetup({
       jobTitle,
-      roleId,
+      roleId: selectedRoleId,
+      rolesAvailable,
       interviewType,
       difficulty,
       durationMin,
@@ -206,7 +227,7 @@ export default function SetupPage() {
   }
 
   async function handleStart() {
-    if (loading || matching || roleId === null) {
+    if (loading || (rolesAvailable && roleId === null)) {
       return;
     }
 
@@ -216,7 +237,7 @@ export default function SetupPage() {
     try {
       const session = await startSession({
         job_title: jobTitle.trim(),
-        role_id: roleId,
+        role_id: rolesAvailable ? roleId : null,
         interview_type: interviewType,
         difficulty,
         duration_min: durationMin,
@@ -294,9 +315,6 @@ export default function SetupPage() {
                   setRoleMessage('');
                   clearError('jobTitle');
                 }}
-                onBlur={() => {
-                  void findRole();
-                }}
               />
 
               {fieldErrors.jobTitle && (
@@ -357,7 +375,7 @@ export default function SetupPage() {
                       : 'Please choose a role.'
                   );
 
-                  if (chosen) {
+                  if (chosen && !typeChosenByUser) {
                     setInterviewType(
                       chosen.name.toLowerCase() ===
                         'customer service'
@@ -383,12 +401,9 @@ export default function SetupPage() {
                 ))}
               </select>
 
-              {rolesError && (
-                <p
-                  role="alert"
-                  className="field-err"
-                >
-                  {rolesError}
+              {!rolesLoading && !rolesAvailable && (
+                <p className="muted" role="status">
+                  Roles are not available yet, so you will get general questions.
                 </p>
               )}
 
@@ -425,6 +440,7 @@ export default function SetupPage() {
                     }
                     onClick={() => {
                       setInterviewType(type);
+                      setTypeChosenByUser(true);
                       clearError('interviewType');
                     }}
                   >
@@ -533,13 +549,9 @@ export default function SetupPage() {
             <button
               type="submit"
               className="btn amber full"
-              disabled={
-                matching || Boolean(rolesError)
-              }
+                disabled={rolesLoading}
             >
-              {matching
-                ? 'Matching your role…'
-                : 'Continue'}
+              {rolesLoading ? 'Loading roles…' : matching ? 'Matching your role…' : 'Continue'}
             </button>
           </form>
         ) : (
