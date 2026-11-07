@@ -3,8 +3,9 @@
 import { useEffect, useId, useRef, useSyncExternalStore } from 'react';
 import ReadAloud from './ReadAloud';
 import {
-  TEXT_SCALE, getServerSettings, getSettingsSnapshot, initSettings, resetSettings, subscribeSettings, updateSettings,
+  clearSettings, getServerSettings, getSettingsSnapshot, initSettings, resetSettings, subscribeSettings, updateSettings,
 } from '../lib/settings';
+import { supabase } from '../lib/supabase';
 
 const SAMPLE = 'Tell me about a time you solved a hard problem.';
 
@@ -33,24 +34,6 @@ function Choice<T extends string>({ legend, name, value, options, onChange, desc
   );
 }
 
-// Text size as a percentage slider (native range input: arrow keys, Home/End, touch and screen readers just work).
-function SizeSlider({ id, value, onChange }: { id: string; value: number; onChange: (v: number) => void }) {
-  return (
-    <div className="set-group">
-      <div className="set-range-head">
-        <label htmlFor={id} className="set-legend">Text size</label>
-        <span className="set-value" aria-hidden="true">{value}%</span>
-      </div>
-      <input id={id} type="range" className="set-range" min={TEXT_SCALE.min} max={TEXT_SCALE.max} step={TEXT_SCALE.step}
-        value={value} aria-valuetext={`${value} percent`}
-        onChange={(e) => onChange(Number(e.target.value))} />
-      <div className="set-ticks" aria-hidden="true">
-        <span>{TEXT_SCALE.min}%</span><span>{TEXT_SCALE.max}%</span>
-      </div>
-    </div>
-  );
-}
-
 // The controls, shared by the dialog and the /settings page.
 export function SettingsForm({ onDone }: { onDone?: () => void }) {
   const settings = useSyncExternalStore(subscribeSettings, getSettingsSnapshot, getServerSettings);
@@ -60,8 +43,15 @@ export function SettingsForm({ onDone }: { onDone?: () => void }) {
 
   return (
     <>
-      <SizeSlider id={`${uid}-size`} value={settings.text_scale}
-        onChange={(text_scale) => updateSettings({ text_scale })} />
+
+      <Choice legend="Text size" name={`${uid}-size`} value={settings.text_size}
+        onChange={(text_size) => updateSettings({ text_size })}
+        options={[
+          { value: 'sm', label: 'Small' },
+          { value: 'md', label: 'Medium' },
+          { value: 'lg', label: 'Large' },
+          { value: 'xl', label: 'Extra large' },
+        ]} />
 
       <Choice legend="Theme" name={`${uid}-theme`} value={settings.theme}
         onChange={(theme) => updateSettings({ theme })}
@@ -107,8 +97,12 @@ export function SettingsPanel() {
   const dialog = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
-    document.documentElement.dataset.settingsReady = '1'; // lets e2e tests wait until the page is interactive
-    return initSettings();
+    const stopInit = initSettings();
+    // Any sign-out removes browser's saved settings,
+    const auth = supabase?.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') clearSettings();
+    });
+    return () => { stopInit(); auth?.data.subscription.unsubscribe(); };
   }, []);
 
   return (

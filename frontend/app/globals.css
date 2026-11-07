@@ -32,7 +32,7 @@
   --on-amber:#1A1204; --on-accent:#06201C;
   color-scheme:dark;
 }
-/* high contrast: black and white, bright accents, borders at 3:1 or better */
+/* high contrast: black and white, bright accents */
 :root[data-theme="contrast"]{
   --bg:#000000; --surface:#000000; --surface-2:#1C1C1C;
   --ink:#FFFFFF; --muted:#E6E6E6; --line:#A8A8A8; --line-strong:#FFFFFF;
@@ -44,7 +44,10 @@
 :root[data-theme="contrast"] :focus-visible{outline-width:4px}
 
 /* text size */
-html{font-size:calc(100% * var(--text-scale,1))}
+html{font-size:100%}
+html[data-text-size="sm"]{font-size:90%}
+html[data-text-size="lg"]{font-size:120%}
+html[data-text-size="xl"]{font-size:140%}
 
 /* dyslexia-friendly: Atkinson Hyperlegible  */
 :root[data-font="dyslexic"]{--font-display:var(--ff-atkinson); --font-body:var(--ff-atkinson); --font-mono:var(--ff-atkinson)}
@@ -73,9 +76,10 @@ header.top{background:var(--surface);border-bottom:1px solid var(--line)}
 .brand{display:flex;align-items:center;gap:10px;font-family:var(--font-display);font-weight:600;font-size:var(--fs-lg);text-decoration:none}
 .mark{width:30px;height:30px;border-radius:9px;background:var(--cyan);display:grid;place-items:center;flex:none}
 .mark svg{width:17px;height:17px}
+.mark svg path{stroke:var(--on-accent)}
 .spacer{flex:1}
-.chip-btn{display:inline-flex;align-items:center;height:36px;gap:7px;background:transparent;border:1px solid var(--line-strong);
-  color:var(--ink);border-radius:10px;padding:0 11px;line-height:1;font-size:var(--fs-sm);margin:0;font-weight:600;text-decoration:none}
+.chip-btn{display:inline-flex;align-items:center;gap:7px;background:transparent;border:1px solid var(--line-strong);
+  color:var(--ink);border-radius:10px;padding:7px 11px;font-size:var(--fs-sm);font-weight:600;text-decoration:none}
 .chip-btn:hover{background:var(--surface-2)}
 
 /* headings */
@@ -122,9 +126,9 @@ input[aria-invalid="true"]{border-color:var(--bad)!important}
 .track .ico svg{width:17px;height:17px;color:var(--cyan)}
 .track .tt{font-weight:700;font-size:var(--fs-ui);display:block}
 .track .td{font-size:var(--fs-xs);color:var(--muted)}
-.seg{display:flex;flex-wrap:wrap;background:var(--surface-2);border:1px solid var(--line);border-radius:11px;padding:3px;gap:3px}
+.seg{display:flex;background:var(--surface-2);border:1px solid var(--line);border-radius:11px;padding:3px;gap:3px}
 .seg[data-invalid="true"]{border-color:var(--bad)}
-.seg button{flex:1 1 6rem;min-width:0;overflow-wrap:anywhere;border:none;background:transparent;color:var(--muted);padding:9px 6px;border-radius:8px;font-size:var(--fs-ui);font-weight:700;line-height:1.25}
+.seg button{flex:1;border:none;background:transparent;color:var(--muted);padding:9px 6px;border-radius:8px;font-size:var(--fs-ui);font-weight:700;line-height:1.25}
 .seg button small{display:block;font-size:var(--fs-xs);font-weight:500;color:var(--muted);margin-top:2px}
 .seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--cyan)}
 
@@ -216,7 +220,7 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;
 .a11y-note{display:inline-flex;align-items:center;gap:7px;font-size:var(--fs-sm)}
 .a11y-note svg{width:15px;height:15px;color:var(--cyan)}
 
-/* accessibility settings */
+/* accessibility settings + read-aloud */
 .msg-read{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-top:6px}
 .set-trigger svg,.read-aloud svg{width:1rem;height:1rem;flex:none}
 body:has(dialog[open]){overflow:hidden}
@@ -243,12 +247,6 @@ body:has(dialog[open]){overflow:hidden}
 .swatch[data-pv="light"]{background:#F3F1EC;border-color:#1A2230}
 .swatch[data-pv="dark"]{background:#0A1418;border-color:#3FD3BC}
 .swatch[data-pv="contrast"]{background:#000;border-color:#FFD84D}
-.set-range-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding-bottom:4px}
-.set-range-head .set-legend{padding:0}
-.set-value{font-weight:700;font-size:var(--fs-ui);color:var(--cyan)}
-.set-range{display:block;width:100%;height:2.25rem;margin:0;accent-color:var(--cyan);cursor:pointer}
-.set-range:focus-visible{outline:3px solid var(--cyan);outline-offset:3px;border-radius:6px}
-.set-ticks{display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--muted)}
 .set-hint{margin:8px 0 0;color:var(--muted);font-size:var(--fs-sm)}
 .set-switch{display:flex;align-items:center;gap:12px;font-weight:700;font-size:var(--fs-ui);cursor:pointer}
 .set-switch input{width:1.375rem;height:1.375rem;margin:0;accent-color:var(--cyan);flex:none}
