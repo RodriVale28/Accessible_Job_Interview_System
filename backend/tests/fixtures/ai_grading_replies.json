@@ -1,0 +1,805 @@
+{
+ "_note": "S2-2.1 recorded AI grader replies (locked reply shape) for question_library/grading_cases.py, in GRADING_CASES order. Hand-written until a live key is available; replace with real recorded replies (backend/scripts/grading_check.py output) when S2-2.4 runs the grading check. Tests never call the AI.",
+ "replies": [
+  {
+   "prompt": "What is the difference between an array and a linked list?",
+   "kind": "correct",
+   "reply": {
+    "criteria": [
+     {
+      "number": 1,
+      "met": true,
+      "quote": "An array stores elements in contiguous memory.",
+      "reason": "The answer states this point correctly."
+     },
+     {
+      "number": 2,
+      "met": true,
+      "quote": "A linked list stores elements in nodes connected by pointers",
+      "reason": "The answer states this point correctly."
+     }
+    ]
+   }
+  },
+  {
+   "prompt": "What is the difference between an array and a linked list?",
+   "kind": "reworded",
+   "reply": {
+    "criteria": [
+     {
+      "number": 1,
+      "met": true,
+      "quote": "An array keeps its entries side by side in storage.",
+      "reason": "The answer states this point correctly."
+     },
+     {
+      "number": 2,
+      "met": true,
+      "quote": "In a linked list, each item lives in a record that holds a reference to the next record.",
+      "reason": "The answer states this point correctly."
+     }
+    ]
+   }
+  },
+  {
+   "prompt": "What is the difference between an array and a linked list?",
+   "kind": "wrong_with_keywords",
+   "reply": {
+    "criteria": [
+     {
+      "number": 1,
+      "met": false,
+      "quote": "",
+      "reason": "The answer uses the right words but states this point incorrectly."
+     },
+     {
+      "number": 2,
+      "met": false,
+      "quote": "",
+      "reason": "The answer uses the right words but states this point incorrectly."
+     }
+    ]
+   }
+  },
+  {
+   "prompt": "What is the difference between an array and a linked list?",
+   "kind": "keyword_stuffing",
+   "reply": {
+    "criteria": [
+     {
+      "number": 1,
+      "met": false,
+      "quote": "",
+      "reason": "The answer lists terms without explaining them."
+     },
+     {
+      "number": 2,
+      "met": false,
+      "quote": "",
+      "reason": "The answer lists terms without explaining them."
+     }
+    ]
+   }
+  },
+  {
+   "prompt": "What is the difference between an array and a linked list?",
+   "kind": "partial",
+   "reply": {
+    "criteria": [
+     {
+      "number": 1,
+      "met": true,
+      "quote": "An array stores its elements next to each other in memory.",
+      "reason": "The answer states this point correctly."
+     },
+     {
+      "number": 2,
+      "met": false,
+      "quote": "",
+      "reason": "The answer does not explain this point."
+     }
+    ]
+   }
+  },
+  {
+   "prompt": "What is a stack, and what are its main operations?",
+   "kind": "correct",
+   "reply": {
+    "criteria": [
+     {
+      "number": 1,
+      "met": true,
+      "quote": "A stack is LIFO: the last item pushed is the first popped.",
+      "reason": "The answer states this point correctly."
+     },
+     {
+      "number": 2,
+      "met": true,
+      "quote": "Push adds an item to the top, pop removes the top item, and peek returns the top item without removing it.",
+      "reason": "The answer states this point correctly."
+     }
+    ]
+   }
+  },
+  {
+   "prompt": "What is a stack, and what are its main operations?",
+   "kind": "reworded",
+   "reply": {
+    "criteria": [
+     {
+      "number": 1,
+      "met": true,
+      "quote": "the newest plate comes off first",
+      "reason": "The answer states this point correctly."
+     },
+     {
+      "number": 2,
+      "met": true,
+      "quote": "You can put a plate on top, take the top one away, or inspect the top one while leaving it in place; those operations are push, pop, and peek.",
+      "reason": "The answer states this point correctly."
+     }
+    ]
+   }
+  },
+  {
+   "prompt": "What is a stack, and what are its main operations?",
+   "kind": "wrong_with_keywords",
+   "reply": {
+    "criteria": [
+     {
+      "number": 1,
+      "met": false,
+      "quote": "",
+      "reason": "The answer uses the right words but states this point incorrectly."
+     },
+     {
+      "number": 2,
+      "met": false,
+      "quote": "",
+      "reason": "The answer uses the right words but states this point incorrectly."
+     }
+    ]
+   }
+  },
+  {
+   "prompt": "What is a stack, and what are its main operations?",
+   "kind": "keyword_stuffing",
+   "reply": {
+    "criteria": [
+     {
+      "number": 1,
+      "met": false,
+      "quote": "",
+      "reason": "The answer lists terms without explaining them."
+     },
+     {
+      "number": 2,
+      "met": false,
+      "quote": "",
+      "reason": "The answer lists terms without explaining them."
+     }
+    ]
+   }
+  },
+  {
+   "prompt": "What is a stack, and what are its main operations?",
+   "kind": "partial",
+   "reply": {
+    "criteria": [
+     {
+      "number": 1,
+      "met": true,
+      "quote": "A stack removes the most recently added item first.",
+      "reason": "The answer states this point correctly."
+     },
+     {
+      "number": 2,
+      "met": false,
+      "quote": "",
+      "reason": "The answer does not explain this point."
+     }
+    ]
+   }
+  },
+  {
+   "prompt": "Explain how binary search works and its time complexity.",
+   "kind": "correct",
+   "reply": {
+    "criteria": [
+     {
+      "number": 1,
+      "met": true,
+      "quote": "Binary search requires sorted data. Compare the target with the middle item, then keep only the left or right half where it could be.",
+      "reason": "The answer states this point correctly."
+     },
+     {
+      "number": 2,
+      "met": true,
+      "quote": "Time is O(log n).",
+      "reason": "The answer states this point correctly."
+     }
+    ]
+   }
+  },
+  {
+   "prompt": "Explain how binary search works and its time complexity.",
+   "kind": "reworded",
+   "reply": {
+    "criteria": [
+     {
+      "number": 1,
+      "met": true,
+      "quote": "With entries in ascending order, check the midpoint and discard the half that cannot contain the value.",
+      "reason": "The answer states this point correctly."
+     },
+     {
+      "number": 2,
+      "met": true,
+      "quote": "The number of checks grows logarithmically, O(log n).",
+      "reason": "The answer states this point correctly."
+     }
+    ]
+   }
+  },
+  {
+   "prompt": "Explain how binary search works and its time complexity.",
+   "kind": "wrong_with_keywords",
+   "reply": {
+    "criteria": [
+     {
+      "number": 1,
+      "met": false,
+      "quote": "",
+      "reason": "The answer uses the right words but states this point incorrectly."
+     },
+     {
+      "number": 2,
+      "met": false,
+      "quote": "",
+      "reason": "The answer uses the right words but states this point incorrectly."
+     }
+    ]
+   }
+  },
+  {
+   "prompt": "Explain how binary search works and its time complexity.",
+   "kind": "keyword_stuffing",
+   "reply": {
+    "criteria": [
+     {
+      "number": 1,
+      "met": false,
+      "quote": "",
+      "reason": "The answer lists terms without explaining them."
+     },
+     {
+      "number": 2,
+      "met": false,
+      "quote": "",
+      "reason": "The answer lists terms without explaining them."
+     }
+    ]
+   }
+  },
+  {
+   "prompt": "Explain how binary search works and its time complexity.",
+   "kind": "partial",
+   "reply": {
+    "criteria": [
+     {
+      "number": 1,
+      "met": false,
+      "quote": "",
+      "reason": "The answer does not explain this point."
+     },
+     {
+      "number": 2,
+      "met": true,
+      "quote": "Binary search has O(log n) time complexity.",
+      "reason": "The answer states this point correctly."
+     }
+    ]
+   }
+  },
+  {
+   "prompt": "What is the difference between a primary key and a foreign key?",
+   "kind": "correct",
+   "reply": {
+    "criteria": [
+     {
+      "number": 1,
+      "met": true,
+      "quote": "A primary key is a unique identifier for each row and cannot be null.",
+      "reason": "The answer states this point correctly."
+     },
+     {
+      "number": 2,
+      "met": true,
+      "quote": "A foreign key references a key in another table, or the same table, to enforce the relationship between rows.",
+      "reason": "The answer states this point correctly."
+     }
+    ]
+   }
+  },
+  {
+   "prompt": "What is the difference between a primary key and a foreign key?",
+   "kind": "reworded",
+   "reply": {
+    "criteria": [
+     {
+      "number": 1,
+      "met": true,
+      "quote": "The main row identifier must be distinct for every record and always present.",
+      "reason": "The answer states this point correctly."
+     },
+     {
+      "number": 2,
+      "met": true,
+      "quote": "A reference column points to an existing keyed record, linking related records and preventing invalid references.",
+      "reason": "The answer states this point correctly."
+     }
+    ]
+   }
+  },
+  {
+   "prompt": "What is the difference between a primary key and a foreign key?",
+   "kind": "wrong_with_keywords",
+   "reply": {
+    "criteria": [
+     {
+      "number": 1,
+      "met": false,
+      "quote": "",
+      "reason": "The answer uses the right words but states this point incorrectly."
+     },
+     {
+      "number": 2,
+      "met": false,
+      "quote": "",
+      "reason": "The answer uses the right words but states this point incorrectly."
+     }
+    ]
+   }
+  },
+  {
+   "prompt": "What is the difference between a primary key and a foreign key?",
+   "kind": "keyword_stuffing",
+   "reply": {
+    "criteria": [
+     {
+      "number": 1,
+      "met": false,
+      "quote": "",
+      "reason": "The answer lists terms without explaining them."
+     },
+     {
+      "number": 2,
+      "met": false,
+      "quote": "",
+      "reason": "The answer lists terms without explaining them."
+     }
+    ]
+   }
+  },
+  {
+   "prompt": "What is the difference between a primary key and a foreign key?",
+   "kind": "partial",
+   "reply": {
+    "criteria": [
+     {
+      "number": 1,
+      "met": true,
+      "quote": "A primary key uniquely identifies each row and cannot be null.",
+      "reason": "The answer states this point correctly."
+     },
+     {
+      "number": 2,
+      "met": false,
+      "quote": "",
+      "reason": "The answer does not explain this point."
+     }
+    ]
+   }
+  },
+  {
+   "prompt": "What is the difference between authentication and authorization?",
+   "kind": "correct",
+   "reply": {
+    "criteria": [
+     {
+      "number": 1,
+      "met": true,
+      "quote": "Authentication verifies identity, such as checking a password at login.",
+      "reason": "The answer states this point correctly."
+     },
+     {
+      "number": 2,
+      "met": true,
+      "quote": "Authorization checks permissions to decide whether that user can access a resource or perform an action.",
+      "reason": "The answer states this point correctly."
+     }
+    ]
+   }
+  },
+  {
+   "prompt": "What is the difference between authentication and authorization?",
+   "kind": "reworded",
+   "reply": {
+    "criteria": [
+     {
+      "number": 1,
+      "met": true,
+      "quote": "First you prove who you are.",
+      "reason": "The answer states this point correctly."
+     },
+     {
+      "number": 2,
+      "met": true,
+      "quote": "the system decides what you are allowed to do",
+      "reason": "The answer states this point correctly."
+     }
+    ]
+   }
+  },
+  {
+   "prompt": "What is the difference between authentication and authorization?",
+   "kind": "wrong_with_keywords",
+   "reply": {
+    "criteria": [
+     {
+      "number": 1,
+      "met": false,
+      "quote": "",
+      "reason": "The answer uses the right words but states this point incorrectly."
+     },
+     {
+      "number": 2,
+      "met": false,
+      "quote": "",
+      "reason": "The answer uses the right words but states this point incorrectly."
+     }
+    ]
+   }
+  },
+  {
+   "prompt": "What is the difference between authentication and authorization?",
+   "kind": "keyword_stuffing",
+   "reply": {
+    "criteria": [
+     {
+      "number": 1,
+      "met": false,
+      "quote": "",
+      "reason": "The answer lists terms without explaining them."
+     },
+     {
+      "number": 2,
+      "met": false,
+      "quote": "",
+      "reason": "The answer lists terms without explaining them."
+     }
+    ]
+   }
+  },
+  {
+   "prompt": "What is the difference between authentication and authorization?",
+   "kind": "partial",
+   "reply": {
+    "criteria": [
+     {
+      "number": 1,
+      "met": false,
+      "quote": "",
+      "reason": "The answer does not explain this point."
+     },
+     {
+      "number": 2,
+      "met": true,
+      "quote": "Authorization checks which actions and resources a user is allowed to access.",
+      "reason": "The answer states this point correctly."
+     }
+    ]
+   }
+  },
+  {
+   "prompt": "What is the difference between TCP and UDP?",
+   "kind": "correct",
+   "reply": {
+    "criteria": [
+     {
+      "number": 1,
+      "met": true,
+      "quote": "TCP establishes a connection and provides a reliable, ordered byte stream",
+      "reason": "The answer states this point correctly."
+     },
+     {
+      "number": 2,
+      "met": true,
+      "quote": "UDP sends datagrams without guaranteeing arrival or order",
+      "reason": "The answer states this point correctly."
+     }
+    ]
+   }
+  },
+  {
+   "prompt": "What is the difference between TCP and UDP?",
+   "kind": "reworded",
+   "reply": {
+    "criteria": [
+     {
+      "number": 1,
+      "met": true,
+      "quote": "TCP opens a conversation, resends missing bytes and presents them in sequence.",
+      "reason": "The answer states this point correctly."
+     },
+     {
+      "number": 2,
+      "met": true,
+      "quote": "UDP sends separate messages with no promise that they reach the destination or keep their original sequence.",
+      "reason": "The answer states this point correctly."
+     }
+    ]
+   }
+  },
+  {
+   "prompt": "What is the difference between TCP and UDP?",
+   "kind": "wrong_with_keywords",
+   "reply": {
+    "criteria": [
+     {
+      "number": 1,
+      "met": false,
+      "quote": "",
+      "reason": "The answer uses the right words but states this point incorrectly."
+     },
+     {
+      "number": 2,
+      "met": false,
+      "quote": "",
+      "reason": "The answer uses the right words but states this point incorrectly."
+     }
+    ]
+   }
+  },
+  {
+   "prompt": "What is the difference between TCP and UDP?",
+   "kind": "keyword_stuffing",
+   "reply": {
+    "criteria": [
+     {
+      "number": 1,
+      "met": false,
+      "quote": "",
+      "reason": "The answer lists terms without explaining them."
+     },
+     {
+      "number": 2,
+      "met": false,
+      "quote": "",
+      "reason": "The answer lists terms without explaining them."
+     }
+    ]
+   }
+  },
+  {
+   "prompt": "What is the difference between TCP and UDP?",
+   "kind": "partial",
+   "reply": {
+    "criteria": [
+     {
+      "number": 1,
+      "met": false,
+      "quote": "",
+      "reason": "The answer does not explain this point."
+     },
+     {
+      "number": 2,
+      "met": true,
+      "quote": "UDP sends datagrams without guaranteeing delivery or their order.",
+      "reason": "The answer states this point correctly."
+     }
+    ]
+   }
+  },
+  {
+   "prompt": "What is the difference between unit testing and integration testing?",
+   "kind": "correct",
+   "reply": {
+    "criteria": [
+     {
+      "number": 1,
+      "met": true,
+      "quote": "Unit testing checks an individual component in isolation",
+      "reason": "The answer states this point correctly."
+     },
+     {
+      "number": 2,
+      "met": true,
+      "quote": "Integration testing runs components together to check that their interactions work correctly.",
+      "reason": "The answer states this point correctly."
+     }
+    ]
+   }
+  },
+  {
+   "prompt": "What is the difference between unit testing and integration testing?",
+   "kind": "reworded",
+   "reply": {
+    "criteria": [
+     {
+      "number": 1,
+      "met": true,
+      "quote": "One approach tests a single small piece while substituting its collaborators.",
+      "reason": "The answer states this point correctly."
+     },
+     {
+      "number": 2,
+      "met": true,
+      "quote": "The other connects several pieces and verifies that they communicate and work with each other as intended.",
+      "reason": "The answer states this point correctly."
+     }
+    ]
+   }
+  },
+  {
+   "prompt": "What is the difference between unit testing and integration testing?",
+   "kind": "wrong_with_keywords",
+   "reply": {
+    "criteria": [
+     {
+      "number": 1,
+      "met": false,
+      "quote": "",
+      "reason": "The answer uses the right words but states this point incorrectly."
+     },
+     {
+      "number": 2,
+      "met": false,
+      "quote": "",
+      "reason": "The answer uses the right words but states this point incorrectly."
+     }
+    ]
+   }
+  },
+  {
+   "prompt": "What is the difference between unit testing and integration testing?",
+   "kind": "keyword_stuffing",
+   "reply": {
+    "criteria": [
+     {
+      "number": 1,
+      "met": false,
+      "quote": "",
+      "reason": "The answer lists terms without explaining them."
+     },
+     {
+      "number": 2,
+      "met": false,
+      "quote": "",
+      "reason": "The answer lists terms without explaining them."
+     }
+    ]
+   }
+  },
+  {
+   "prompt": "What is the difference between unit testing and integration testing?",
+   "kind": "partial",
+   "reply": {
+    "criteria": [
+     {
+      "number": 1,
+      "met": false,
+      "quote": "",
+      "reason": "The answer does not explain this point."
+     },
+     {
+      "number": 2,
+      "met": true,
+      "quote": "Integration testing checks the interactions between components that run together.",
+      "reason": "The answer states this point correctly."
+     }
+    ]
+   }
+  },
+  {
+   "prompt": "What is the difference between a shallow copy and a deep copy?",
+   "kind": "correct",
+   "reply": {
+    "criteria": [
+     {
+      "number": 1,
+      "met": true,
+      "quote": "A shallow copy creates a new outer container but keeps references to the same nested objects.",
+      "reason": "The answer states this point correctly."
+     },
+     {
+      "number": 2,
+      "met": true,
+      "quote": "A deep copy recursively copies nested mutable objects",
+      "reason": "The answer states this point correctly."
+     }
+    ]
+   }
+  },
+  {
+   "prompt": "What is the difference between a shallow copy and a deep copy?",
+   "kind": "reworded",
+   "reply": {
+    "criteria": [
+     {
+      "number": 1,
+      "met": true,
+      "quote": "the shallow version makes a new outer list while its inner lists are still shared.",
+      "reason": "The answer states this point correctly."
+     },
+     {
+      "number": 2,
+      "met": true,
+      "quote": "The deep version duplicates the inner lists too, letting either version be edited independently.",
+      "reason": "The answer states this point correctly."
+     }
+    ]
+   }
+  },
+  {
+   "prompt": "What is the difference between a shallow copy and a deep copy?",
+   "kind": "wrong_with_keywords",
+   "reply": {
+    "criteria": [
+     {
+      "number": 1,
+      "met": false,
+      "quote": "",
+      "reason": "The answer uses the right words but states this point incorrectly."
+     },
+     {
+      "number": 2,
+      "met": false,
+      "quote": "",
+      "reason": "The answer uses the right words but states this point incorrectly."
+     }
+    ]
+   }
+  },
+  {
+   "prompt": "What is the difference between a shallow copy and a deep copy?",
+   "kind": "keyword_stuffing",
+   "reply": {
+    "criteria": [
+     {
+      "number": 1,
+      "met": false,
+      "quote": "",
+      "reason": "The answer lists terms without explaining them."
+     },
+     {
+      "number": 2,
+      "met": false,
+      "quote": "",
+      "reason": "The answer lists terms without explaining them."
+     }
+    ]
+   }
+  },
+  {
+   "prompt": "What is the difference between a shallow copy and a deep copy?",
+   "kind": "partial",
+   "reply": {
+    "criteria": [
+     {
+      "number": 1,
+      "met": true,
+      "quote": "A shallow copy makes a new outer container while retaining references to the same nested objects.",
+      "reason": "The answer states this point correctly."
+     },
+     {
+      "number": 2,
+      "met": false,
+      "quote": "",
+      "reason": "The answer does not explain this point."
+     }
+    ]
+   }
+  }
+ ]
+}
