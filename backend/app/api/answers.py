@@ -1,7 +1,9 @@
 """S1-3.2 Answer submission API - owner: Jayme Nguyen
+S2-2.1 grading with evaluate() (AI grader + keyword fallback) - owner: Prince Nnadi
 
 POST /api/sessions/{id}/answers   save the answer, score it, return the next question
 An empty answer is a "skip": it is saved with is_blank=true and flagged in feedback.
+Every 404/409 check runs BEFORE the grader, so a refused answer never reaches the AI.
 """
 from __future__ import annotations
 
@@ -13,12 +15,11 @@ from pydantic import BaseModel, Field
 from app.api.deps import load_session, time_is_up, user_id
 from app.api.sessions import QuestionOut
 from app.evaluation.feedback_rules import feedback_for_answer
-from app.evaluation.keyword_evaluator import KeywordEvaluator
+from app.evaluation.evaluator import evaluate
 from app.repository import AlreadyAnswered, PersistenceError, get_repo
 from app.services import question_service as qs
 
 router = APIRouter()
-evaluator = KeywordEvaluator()
 
 
 class AnswerIn(BaseModel):
@@ -60,13 +61,17 @@ def _submit(repo, session_id: int, uid: str, body: AnswerIn) -> AnswerOut:
 
     text = body.text.strip()
     blank = not text
-    result = evaluator.score_answer(text, current["expected_keywords"])
+    result = evaluate(_question_for_grading(repo, current), text)
     fb = feedback_for_answer(result, text)
     prior_correct = sum(1 for f in repo.get_feedback(session_id).values() if f["correct"])
     correct_count = prior_correct + (1 if result.correct else 0)
     repo.save_answer(session_id, current["id"], text, blank, {
-        "score": result.score, "correct": result.correct, "matched": result.matched,
-        "missing": result.missing, "strengths": fb["strengths"], "improvements": fb["improvements"],
+        "score": result.score, "correct": result.correct,
+        # Sprint 1 columns keep working: matched = criteria_met, missing = criteria_missed.
+        "matched": result.criteria_met, "missing": result.criteria_missed,
+        "criteria_met": result.criteria_met, "criteria_missed": result.criteria_missed,
+        "evidence": result.evidence, "reasons": result.reasons, "grader": result.grader,
+        "strengths": fb["strengths"], "improvements": fb["improvements"],
     }, correct_count)
 
     answered = len(repo.get_responses(session_id))
@@ -80,3 +85,13 @@ def _submit(repo, session_id: int, uid: str, body: AnswerIn) -> AnswerOut:
     return AnswerOut(saved=True, blank=blank, correct_count=correct_count, answered=answered,
                      total=s["total_questions"], completed=nxt is None, q_index=idx,
                      question=QuestionOut(**nxt) if nxt else None)
+
+
+def _question_for_grading(repo, row: dict) -> dict:
+    """The question dict evaluate() takes. Server-side only: never sent to the browser."""
+    return {
+        "id": row["id"], "prompt": row["prompt"],
+        "question_type": row.get("question_type") or "Technical",
+        "expected_keywords": list(row.get("expected_keywords") or []),
+        "rubric": repo.get_rubric(row["id"]),
+    }
