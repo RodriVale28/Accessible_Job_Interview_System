@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { ApiError, completeSession, getSession } from '@/lib/api';
 import { submitAnswer } from '@/lib/submitAnswer';
 import { ClockIcon, SendIcon } from '@/components/Icons';
+import ReadAloud from '@/components/ReadAloud';
 import type { Question, SessionState } from '@/lib/types';
 
 type Msg = { id: number; who: 'ai' | 'me'; text: string; label?: string; kind?: 'intro' | 'note' | 'question' };
@@ -39,7 +40,7 @@ export default function SessionPage() {
     if (finishing.current) return;
     finishing.current = true;
     setBusy(true);
-    setMessages((m) => [...m, msg({ who: 'ai', kind: 'note', text: 'Thanks, that’s the end of the interview. Scoring your answers…' })]);
+    setMessages((m) => [...m, msg({ who: 'ai', kind: 'note', text: 'Thanks, that’s the end of the interview. We’ll prepare your results…' })]);
     try {
       await completeSession(id);
       router.push(`/results/${id}`);
@@ -69,12 +70,12 @@ export default function SessionPage() {
         }
         setState(s);
         setAnswered(s.q_index - 1);
-        if (s.seconds_left !== null) setDeadline(Date.now() + s.seconds_left * 1000); // S2-1.3: untimed = no countdown
+        if (s.timed && s.seconds_left !== null) setDeadline(Date.now() + s.seconds_left * 1000);
         setMessages([
           msg({
             who: 'ai', kind: 'intro',
             text: s.q_index === 1
-              ? `Hi! This is ${s.difficulty === 'Easy' ? 'an' : 'a'} ${s.difficulty.toLowerCase()} technical interview for ${s.job_title}. I’ll ask ${s.total} questions, one at a time. Take your time, and name the key terms you know.`
+              ? `Hi! This is ${s.difficulty === 'Easy' ? 'an' : 'a'} ${s.difficulty.toLowerCase()} ${s.interview_type.toLowerCase()} interview for ${s.role_name || s.job_title}. I’ll ask ${s.total} questions, one at a time. Take your time, and explain your thinking.`
               : `Welcome back. Picking up where you left off: ${s.q_index - 1} of ${s.total} answered.`,
           }),
           questionMsg(s.question, s.q_index, s.total),
@@ -102,7 +103,7 @@ export default function SessionPage() {
   }, [messages, busy]);
 
   const secondsLeft = deadline ? Math.max(0, Math.round((deadline - now) / 1000)) : 0;
-  const announce = !deadline ? '' : secondsLeft === 0 ? 'Time is up. Scoring your interview.'
+  const announce = !deadline ? '' : secondsLeft === 0 ? 'The interview time has ended. We’ll prepare your results.'
     : secondsLeft <= 60 ? '1 minute left.' : secondsLeft <= 300 ? '5 minutes left.' : '';
 
   async function send(text: string) {
@@ -175,17 +176,17 @@ export default function SessionPage() {
 
   return (
     <div className="wrap session">
-      <h1 className="sr-only">Technical interview: {state.job_title}</h1>
+      <h1 className="sr-only">{state.interview_type} interview: {state.role_name || state.job_title}</h1>
       <div className="panel stage simple">
         <div className="chat-col">
           <div className="chat-head">
             <div>
               <div className="who">Interviewer</div>
-              <div className="role">{state.job_title} · Technical · {state.difficulty}</div>
+              <div className="role">{state.role_name || state.job_title} · {state.interview_type} · {state.difficulty}</div>
             </div>
-            <span className={`clock${clockCls}`} role="timer" aria-label={`Time left ${fmt(secondsLeft)}`}>
-              <ClockIcon /><span>{secondsLeft === 0 ? "Time's up" : fmt(secondsLeft)}</span>
-            </span>
+            {state.timed && <span className={`clock${clockCls}`} role="timer" aria-label={`Time left ${fmt(secondsLeft)}`}>
+              <ClockIcon /><span>{secondsLeft === 0 ? 'Time is up' : fmt(secondsLeft)}</span>
+            </span>}
             <span className="qcount">Q <b>{state.q_index}</b>/{state.total}</span>
           </div>
           <div className="progress-row">
@@ -198,7 +199,7 @@ export default function SessionPage() {
               aria-valuenow={answered}
               aria-valuetext={`Question ${state.q_index} of ${state.total}`}
             ><i style={{ width: `${pct}%` }} /></div>
-            <span className="small muted">Correct so far: <b>{state.correct_count}</b></span>
+            <span className="small muted">{answered} of {state.total} answered</span>
           </div>
 
           <div className="messages" ref={logRef} role="log" aria-live="polite" aria-label="Interview conversation">
@@ -218,9 +219,14 @@ export default function SessionPage() {
             )}
           </div>
 
+          <div className="question-tools">
+            <ReadAloud text={state.question.prompt} label="Read question aloud" />
+          </div>
+
           <form className="answer-area" onSubmit={onSubmit}>
             <div className="assist-row">
               <span className="spacer" />
+              <Link className="guide-btn" href="/">Leave and resume later</Link>
               <button className="guide-btn" type="button" disabled={busy} onClick={() => void send('')}>Skip question</button>
               <button className="guide-btn end" type="button" disabled={busy} onClick={() => void finish()}>End now</button>
             </div>

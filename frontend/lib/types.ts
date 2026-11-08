@@ -95,3 +95,18 @@ export type SessionSummary = {
   role_name: string | null; // S2-1.3
   interview_type: InterviewType; // S2-1.3
 };
+
+
+export type PracticeResult = {
+  question_id: number;
+  prompt: string;
+  answer: string;
+  score: number;
+  correct: boolean;
+  criteria_met: string[];
+  criteria_missed: string[];
+  evidence: string[];
+  grader: string;
+  strengths: string;
+  improvements: string;
+};

@@ -3,7 +3,7 @@
 import { authHeaders } from './user';
 import { loginRequired } from './supabase';
 import type {
-  Difficulty, Duration, InterviewType, Results, Role, RoleMatch, SessionState, SessionSummary,
+  Difficulty, Duration, InterviewType, PracticeResult, Question, Results, Role, RoleMatch, SessionState, SessionSummary,
 } from './types';
 
 export class ApiError extends Error {
@@ -53,7 +53,6 @@ export const startSession = (body: {
     body: JSON.stringify({ interview_type: 'Technical', ...body }),
   });
 
-// TODO S2-1.3: set to false once GET /api/roles and POST /api/roles/match are merged and live.
 export const getRoles = () => api<Role[]>('/api/roles');
 
 export const matchRole = (job_title: string) =>
@@ -68,6 +67,16 @@ export const getResults = (id: number | string) => api<Results>(`/api/sessions/$
 
 export const listSessions = () => api<SessionSummary[]>('/api/sessions');
 
+// S2-4.2: practice and discard (S2-4.1 endpoints).
+export const getPracticeQuestion = (body: {
+  question_id?: number; role_id?: number; skill?: string; interview_type?: InterviewType; difficulty?: Difficulty;
+}) => api<Question>('/api/practice/question', { method: 'POST', body: JSON.stringify(body) });
+
+export const submitPracticeAnswer = (body: { question_id: number; text: string }) =>
+  api<PracticeResult>('/api/practice/answer', { method: 'POST', body: JSON.stringify(body) });
+
+export const discardSession = (id: number | string) =>
+  api<void>(`/api/sessions/${id}`, { method: 'DELETE' });
 
 // TODO S2-2.2: Replace this development sample with live results once the
 // Sprint 2 results API contract is available.

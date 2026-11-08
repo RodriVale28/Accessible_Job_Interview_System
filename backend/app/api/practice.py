@@ -141,13 +141,6 @@ def practice_question(
                 detail="No matching practice question is available.",
             )
 
-        if request.question_id is not None:
-            if question.get("question_type", "Technical") != request.interview_type:
-                raise HTTPException(
-                    status_code=404,
-                    detail="No matching practice question is available.",
-                )
-
         return {
             "id": question["id"],
             "prompt": question["prompt"],
