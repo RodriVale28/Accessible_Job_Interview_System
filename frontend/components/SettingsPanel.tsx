@@ -3,7 +3,7 @@
 import { useEffect, useId, useRef, useSyncExternalStore } from 'react';
 import ReadAloud from './ReadAloud';
 import {
-  clearSettings, getServerSettings, getSettingsSnapshot, initSettings, resetSettings, subscribeSettings, updateSettings,
+  clearSettings, getServerSettings, getSettingsSnapshot, initSettings, loadAccountSettings, resetSettings, subscribeSettings, updateSettings,
 } from '../lib/settings';
 import { supabase } from '../lib/supabase';
 
@@ -101,6 +101,7 @@ export function SettingsPanel() {
     // Any sign-out removes browser's saved settings,
     const auth = supabase?.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') clearSettings();
+      if (event === 'SIGNED_IN') void loadAccountSettings(); // bring the account's settings back after login
     });
     return () => { stopInit(); auth?.data.subscription.unsubscribe(); };
   }, []);

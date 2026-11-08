@@ -285,13 +285,20 @@ test('Sprint 2 demo path', async ({ page }) => {
     await expect(page.getByText(/· Behavioral ·/)).toBeVisible();
   });
 
-  await test.step('a settings change survives a reload', async (step) => {
+  await test.step('a settings change survives a reload', async () => {
     // Settings are applied as data-text-size / data-theme / data-font on <html> (S2-6.1).
-    // TODO S2-6.1: check the control name against the settings panel when it merges, then remove the skip.
-    step.skip(true, 'waiting for S2-6.1 / S2-4.1 (accessibility settings)');
     await page.goto('/');
-    await page.getByLabel(/Text size/i).selectOption('lg');
+    await page.getByRole('button', { name: 'Settings' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Accessibility settings' });
+    const saved = page.waitForResponse((r) => r.url().endsWith('/api/settings') && r.request().method() === 'PUT');
+    await dialog.getByRole('group', { name: 'Text size' }).getByText('Large', { exact: true }).click();
     await expect(page.locator('html')).toHaveAttribute('data-text-size', 'lg');
+    await dialog.getByRole('button', { name: 'Done' }).click();
+    await saved;
+    await page.reload();
+    await expect(page.locator('html')).toHaveAttribute('data-text-size', 'lg');
+    // Saved on the account too: with the browser copy gone (as after logout), it comes back from /api/settings.
+    await page.evaluate(() => localStorage.removeItem('interview-studio-settings'));
     await page.reload();
     await expect(page.locator('html')).toHaveAttribute('data-text-size', 'lg');
   });

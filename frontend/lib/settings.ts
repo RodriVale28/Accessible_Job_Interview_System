@@ -1,4 +1,6 @@
 
+import { authHeaders } from './user';
+
 export type Settings = {
   text_size: 'sm' | 'md' | 'lg' | 'xl';
   theme: 'light' | 'dark' | 'contrast';
@@ -78,18 +80,48 @@ function setCurrent(next: Settings) {
 }
 
 
+// Account copy (GET / PUT /api/settings). Signed out = no auth headers = browser only.
+// Plain fetch, not api(): a 401 here must never send the user to the login page.
+async function account(init?: RequestInit): Promise<Settings | null> {
+  try {
+    const headers = await authHeaders();
+    if (!Object.keys(headers).length) return null;
+    const res = await fetch('/api/settings', {
+      ...init, headers: { 'Content-Type': 'application/json', ...headers }, cache: 'no-store',
+    });
+    return res.ok ? normalizeSettings(await res.json()) : null;
+  } catch {
+    return null; // offline or server down: localStorage keeps working
+  }
+}
+
+let edits = 0; // a change made while the account copy loads wins over the loaded copy
+
+// Load the account's saved settings (page load and sign-in), so they survive logout and login.
+export async function loadAccountSettings() {
+  const before = edits;
+  const saved = await account();
+  if (saved && edits === before) {
+    writeLocal(saved);
+    setCurrent(saved);
+  }
+}
+
 // Call once from a mounted component. Returns the cleanup function.
 export function initSettings(): () => void {
   const local = readLocal();
   if (local) setCurrent(local);
+  void loadAccountSettings();
   return () => {};
 }
 
 export function updateSettings(patch: Partial<Settings>) {
   const next = normalizeSettings({ ...current, ...patch });
   if (same(next, current)) return;
+  edits += 1;
   writeLocal(next);
   setCurrent(next);
+  void account({ method: 'PUT', body: JSON.stringify(next) });
 }
 
 export const resetSettings = () => updateSettings(DEFAULT_SETTINGS);
