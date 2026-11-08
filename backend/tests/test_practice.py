@@ -38,6 +38,18 @@ def test_get_specific_practice_question(client, user, repo):
     assert response.json()["id"] == question_id
 
 
+def test_practice_link_opens_a_behavioral_question(client, user, repo):
+    """S2-4.2: /practice?question_id=<id> from results sends only the id, so a behavioral id must load."""
+    question_id = next(
+        qid for qid, q in repo.questions.items() if q.get("question_type") == "Behavioral"
+    )
+
+    response = client.post("/api/practice/question", headers=user, json={"question_id": question_id})
+
+    assert response.status_code == 200, response.text
+    assert response.json()["id"] == question_id
+
+
 def test_submit_practice_answer(client, user, repo):
     """A practice answer is graded and saved for its owner."""
     question_id = next(iter(repo.questions))

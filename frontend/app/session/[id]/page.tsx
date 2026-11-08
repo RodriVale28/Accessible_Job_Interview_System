@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { ApiError, completeSession, getSession } from '@/lib/api';
 import { submitAnswer } from '@/lib/submitAnswer';
 import { ClockIcon, SendIcon } from '@/components/Icons';
+import ReadAloud from '@/components/ReadAloud';
 import type { Question, SessionState } from '@/lib/types';
 
 type Msg = { id: number; who: 'ai' | 'me'; text: string; label?: string; kind?: 'intro' | 'note' | 'question' };
@@ -219,16 +220,7 @@ export default function SessionPage() {
           </div>
 
           <div className="question-tools">
-            <button
-              className="guide-btn"
-              type="button"
-              onClick={() => {
-                if ('speechSynthesis' in window && state.question) {
-                  window.speechSynthesis.cancel();
-                  window.speechSynthesis.speak(new SpeechSynthesisUtterance(state.question.prompt));
-                }
-              }}
-            >Read question aloud</button>
+            <ReadAloud text={state.question.prompt} label="Read question aloud" />
           </div>
 
           <form className="answer-area" onSubmit={onSubmit}>

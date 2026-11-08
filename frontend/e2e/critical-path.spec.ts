@@ -267,12 +267,10 @@ test('Sprint 2 demo path', async ({ page }) => {
     await expect(page).toHaveURL(resultsUrl);
   });
 
-  await test.step('practice one question', async (step) => {
-    // TODO S2-4.2: check these names against the practice page when it merges, then remove the skip.
-    step.skip(true, 'waiting for S2-4.1 / S2-4.2 (practice)');
+  await test.step('practice one question', async () => {
     await page.goto('/practice');
     await page.getByLabel('Your answer').fill(GOOD_ANSWER);
-    await page.getByRole('button', { name: /Check|Submit|Send/ }).click();
+    await page.getByRole('button', { name: 'See feedback' }).click();
     await expect(page.getByText(SOFT_LABEL).first()).toBeVisible();
     await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Another question' })).toBeVisible();

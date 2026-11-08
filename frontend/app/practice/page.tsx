@@ -3,11 +3,13 @@
 import { Suspense, useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { PastInterviews } from '@/components/PastInterviews';
+import ReadAloud from '@/components/ReadAloud';
 import { useSearchParams } from 'next/navigation';
 import { getPracticeQuestion, getRoles, submitPracticeAnswer } from '@/lib/api';
 import type { Difficulty, InterviewType, PracticeResult, Question, Role } from '@/lib/types';
 
-const TYPES: InterviewType[] = ['Technical', 'Behavioral', 'Mixed'];
+// Practice is one question, so Technical or Behavioral (Mixed is for full interviews).
+const TYPES: InterviewType[] = ['Technical', 'Behavioral'];
 const labelFor = (score: number) => score >= 80 ? 'Strong' : score >= 50 ? 'Getting there' : 'Room to grow';
 
 export default function PracticePage() {
@@ -27,7 +29,7 @@ function PracticeContent() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => { void getRoles().then(setRoles); }, []);
+  useEffect(() => { getRoles().then(setRoles).catch(() => setRoles([])); }, []);
 
   async function chooseQuestion(questionId?: number) {
     setBusy(true);
@@ -65,13 +67,6 @@ function PracticeContent() {
     finally { setBusy(false); }
   }
 
-  function readQuestion() {
-    if (question && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(new SpeechSynthesisUtterance(question.prompt));
-    }
-  }
-
   return (
     <div>
     <section className="wrap report" aria-labelledby="practice-title">
@@ -105,7 +100,7 @@ function PracticeContent() {
         {question && <article className="practice-question" aria-labelledby="question-title">
           <div className="practice-qhead">
             <h2 id="question-title">{question.prompt}</h2>
-            <button className="guide-btn" type="button" onClick={readQuestion}>Read question aloud</button>
+            <ReadAloud text={question.prompt} label="Read question aloud" />
           </div>
           {!result ? (
             <form onSubmit={(e) => void submit(e)}>
