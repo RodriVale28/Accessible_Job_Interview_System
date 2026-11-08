@@ -788,27 +788,6 @@ def discard_session(session_id, user_id) -> bool:
 
 # ---- S2-4.1: Practice, settings, and history (PostgreSQL) ----
 
-def save_practice_attempt(user_id, question_id, answer_text, result: dict) -> int:
-    """Save a practice answer and grading result to PostgreSQL."""
-    try:
-        with _connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    INSERT INTO practice_attempts
-                        (user_id, question_id, answer_text, result)
-                    VALUES (%s, %s, %s, %s)
-                    RETURNING id
-                    """,
-                    (user_id, question_id, answer_text, Jsonb(result)),
-                )
-                return cur.fetchone()["id"]
-
-    except psycopg.Error as exc:
-        raise PersistenceError(
-            "Could not save practice attempt"
-        ) from exc
-
 def _question_dict(q) -> dict:
     """A question in the S2 dict shape; Sprint 1 tuples (category, difficulty, prompt, keywords) still load."""
     if not isinstance(q, dict):
