@@ -315,6 +315,11 @@ export default function SetupPage() {
                   setRoleMessage('');
                   clearError('jobTitle');
                 }}
+onBlur={() => {
+  if (rolesAvailable && jobTitle.trim().length >= 2) {
+    void findRole();
+  }
+}}   
               />
 
               {fieldErrors.jobTitle && (
