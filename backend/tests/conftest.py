@@ -2,6 +2,7 @@ import os
 import uuid
 
 os.environ.setdefault("ALLOW_GUEST", "1")  # tests sign in with a guest id (X-User-Id)
+os.environ.setdefault("AI_ENABLED", "0")  # S2-2.1: tests never call the AI
 
 import pytest
 from fastapi.testclient import TestClient
