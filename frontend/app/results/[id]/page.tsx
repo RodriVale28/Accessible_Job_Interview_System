@@ -428,9 +428,9 @@ export default function ResultsPage() {
               </b>
             </p>
 
-            <p className="muted">
-              Overall score: {score}/100
-            </p>
+            <h2 className="muted">
+              Overall score: {score} out of 100
+            </h2>
 
             <p className="muted">
               {results.job_title} · {results.interview_type} ·{' '}
