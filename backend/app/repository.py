@@ -347,8 +347,8 @@ def pick_unused_question(session_id, difficulty):
                     """
                     SELECT q.id, q.prompt, q.category
                     FROM question_library AS q
-                    AND q.question_type = 'Technical'
                     WHERE q.difficulty = %s
+                      AND q.question_type = 'Technical'
                       AND NOT EXISTS (
                           SELECT 1
                           FROM session_questions AS sq
@@ -369,6 +369,30 @@ def pick_unused_question(session_id, difficulty):
         ) from exc
 
 # ---- S2-1.2 interview builder ----
+
+def skills_with_questions(question_type) -> set:
+    """Names of skills that have at least one question of this type."""
+
+    try:
+        with _connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT DISTINCT sk.name
+                    FROM question_skills AS qs
+                    JOIN skills AS sk ON sk.id = qs.skill_id
+                    JOIN question_library AS q ON q.id = qs.question_id
+                    WHERE q.question_type = %s
+                    """,
+                    (question_type,)
+                )
+                return {r["name"] for r in cur.fetchall()}
+
+    except psycopg.Error as exc:
+        raise PersistenceError(
+            "Could not list skills with questions"
+        ) from exc
+
 
 def pick_question_for(session_id, difficulty, skills=None, question_type=None):
     """Random unused question: {id, prompt, category} or None.
@@ -826,14 +850,20 @@ class MemoryRepository:
             return None
         q = random.choice(options)
         return {"id": q["id"], "prompt": q["prompt"], "category": q["category"]}
-    
+
     def record_asked_question(self, session_id, question_id, q_index):
         asked = self.session_questions[session_id]
         if any(q["question_id"] == question_id or q["q_index"] == q_index for q in asked):
             raise PersistenceError("Could not record asked question")
         asked.append({"question_id": question_id, "q_index": q_index})
 
-        # S2-1.2 interview builder
+    # S2-1.2 interview builder
+    def skills_with_questions(self, question_type) -> set:
+        """Names of skills that have at least one question of this type."""
+        return {s for q in self.questions.values()
+                if q["question_type"] == question_type
+                for s in q["skills"]}
+
     def pick_question_for(self, session_id, difficulty, skills=None, question_type=None):
         used = set()
         if session_id is not None:
