@@ -16,6 +16,9 @@ from app.evaluation.feedback_rules import feedback_for_answer
 from app.evaluation.keyword_evaluator import KeywordEvaluator
 from app.repository import AlreadyAnswered, PersistenceError, get_repo
 from app.services import question_service as qs
+from app.evaluation.evaluator import evaluate
+
+
 
 router = APIRouter()
 evaluator = KeywordEvaluator()
@@ -60,13 +63,43 @@ def _submit(repo, session_id: int, uid: str, body: AnswerIn) -> AnswerOut:
 
     text = body.text.strip()
     blank = not text
-    result = evaluator.score_answer(text, current["expected_keywords"])
-    fb = feedback_for_answer(result, text)
+
+
+
+question = repo.get_question(current["id"])
+question["rubric"] = repo.get_rubric(current["id"])
+
+result = evaluate(question, text)
+keyword_result = evaluator.score_answer(
+    text, current["expected_keywords"]
+)
+fb = feedback_for_answer(keyword_result, text)
+
+
+
+
+    
     prior_correct = sum(1 for f in repo.get_feedback(session_id).values() if f["correct"])
     correct_count = prior_correct + (1 if result.correct else 0)
     repo.save_answer(session_id, current["id"], text, blank, {
-        "score": result.score, "correct": result.correct, "matched": result.matched,
-        "missing": result.missing, "strengths": fb["strengths"], "improvements": fb["improvements"],
+
+"score": result.score,
+"correct": result.correct,
+"matched": result.criteria_met,
+"missing": result.criteria_missed,
+"criteria_met": result.criteria_met,
+"criteria_missed": result.criteria_missed,
+"evidence": result.evidence,
+"reasons": result.reasons,
+"grader": result.grader,
+"strengths": fb["strengths"],
+"improvements": fb["improvements"],
+
+        
+
+
+
+        
     }, correct_count)
 
     answered = len(repo.get_responses(session_id))
