@@ -78,7 +78,9 @@ def _submit(repo, session_id: int, uid: str, body: AnswerIn) -> AnswerOut:
     nxt, idx = None, answered
     if answered < s["total_questions"]:
         try:
-            nxt = qs.next_question(session_id, s["difficulty"], repo=repo)
+            nxt = qs.next_question(session_id, s["difficulty"], repo=repo,
+                                 role_id=s.get("role_id"),
+                                 interview_type=s.get("interview_type") or "Technical")
             idx = answered + 1
         except qs.NoQuestionAvailable:
             nxt = None
