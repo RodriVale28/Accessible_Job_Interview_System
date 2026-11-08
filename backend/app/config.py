@@ -23,3 +23,11 @@ SUPABASE_URL = os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
 # Local dev, tests and CI only: accept a browser guest id (X-User-Id) instead of a login.
 # Never set this on Render.
 ALLOW_GUEST = os.environ.get("ALLOW_GUEST", "").strip().lower() in ("1", "true", "yes")
+
+
+
+# AI settings
+AI_ENABLED = os.environ.get("AI_ENABLED", "false").strip().lower() in ("1", "true", "yes")
+AI_API_KEY = os.environ.get("AI_API_KEY", "").strip()
+LLM_MODEL = os.environ.get("LLM_MODEL", "").strip()
+AI_TIMEOUT_SECONDS = float(os.environ.get("AI_TIMEOUT_SECONDS", "15"))
