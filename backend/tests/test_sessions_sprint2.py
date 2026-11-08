@@ -79,6 +79,11 @@ def test_history_rows_show_role_and_type(client, user, start, fake_roles):
     assert row["interview_type"] == "Behavioral"
 
 
+def test_behavioral_interview_starts_with_a_behavioral_question(start, repo):
+    s = start(interview_type="Behavioral")
+    assert repo.questions[s["question"]["id"]]["question_type"] == "Behavioral"
+
+
 def test_timer_flag_must_be_a_boolean(client, user):
     r = client.post("/api/sessions", headers=user, json={
         "job_title": "Analyst", "difficulty": "Easy", "duration_min": 15, "timed": "maybe"})
