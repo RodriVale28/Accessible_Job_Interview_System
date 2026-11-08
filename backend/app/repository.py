@@ -16,6 +16,7 @@ from typing import Any
 import psycopg
 from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
+from psycopg.types.json import Jsonb
 
 from app.config import DATABASE_URL
 
@@ -669,6 +670,124 @@ def get_rubric(question_id) -> list:
         ) from exc
 
 
+# ---- S2-4.1: Practice, settings, and history (PostgreSQL) ----
+
+def save_practice_attempt(user_id, question_id, answer_text, result: dict) -> int:
+    """Save a practice attempt and grading result."""
+    try:
+        with _connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO practice_attempts
+                        (user_id, question_id, answer_text, result)
+                    VALUES (%s, %s, %s, %s)
+                    RETURNING id
+                    """,
+                    (user_id, question_id, answer_text, Jsonb(result)),
+                )
+                return cur.fetchone()["id"]
+    except psycopg.Error as exc:
+        raise PersistenceError("Could not save practice attempt") from exc
+
+
+def get_settings(user_id) -> dict | None:
+    """Retrieve a user's accessibility settings."""
+    try:
+        with _connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT text_size, theme, font, read_aloud
+                    FROM user_settings
+                    WHERE user_id = %s
+                    """,
+                    (user_id,),
+                )
+                return cur.fetchone()
+    except psycopg.Error as exc:
+        raise PersistenceError("Could not retrieve settings") from exc
+
+
+def save_settings(user_id, settings: dict):
+    """Save or update a user's accessibility settings."""
+    try:
+        with _connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO user_settings
+                        (user_id, text_size, theme, font, read_aloud)
+                    VALUES (%s, %s, %s, %s, %s)
+                    ON CONFLICT (user_id)
+                    DO UPDATE SET
+                        text_size = EXCLUDED.text_size,
+                        theme = EXCLUDED.theme,
+                        font = EXCLUDED.font,
+                        read_aloud = EXCLUDED.read_aloud,
+                        updated_at = NOW()
+                    """,
+                    (
+                        user_id,
+                        settings["text_size"],
+                        settings["theme"],
+                        settings["font"],
+                        settings["read_aloud"],
+                    ),
+                )
+    except psycopg.Error as exc:
+        raise PersistenceError("Could not save settings") from exc
+
+
+def discard_session(session_id, user_id) -> bool:
+    """Discard an unfinished interview belonging to the user."""
+    try:
+        with _connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT id
+                    FROM sessions
+                    WHERE id = %s
+                      AND user_id = %s
+                      AND status = 'in_progress'
+                    FOR UPDATE
+                    """,
+                    (session_id, user_id),
+                )
+
+                if cur.fetchone() is None:
+                    return False
+
+                cur.execute(
+                    "DELETE FROM feedback WHERE session_id = %s",
+                    (session_id,),
+                )
+                cur.execute(
+                    "DELETE FROM responses WHERE session_id = %s",
+                    (session_id,),
+                )
+                cur.execute(
+                    "DELETE FROM session_questions WHERE session_id = %s",
+                    (session_id,),
+                )
+                cur.execute(
+                    """
+                    DELETE FROM sessions
+                    WHERE id = %s
+                      AND user_id = %s
+                      AND status = 'in_progress'
+                    RETURNING id
+                    """,
+                    (session_id, user_id),
+                )
+
+                return cur.fetchone() is not None
+    except psycopg.Error as exc:
+        raise PersistenceError("Could not discard interview") from exc
+
+# ---- S2-4.1: Practice, settings, and history (PostgreSQL) ----
+
 def _question_dict(q) -> dict:
     """A question in the S2 dict shape; Sprint 1 tuples (category, difficulty, prompt, keywords) still load."""
     if not isinstance(q, dict):
@@ -710,6 +829,10 @@ class MemoryRepository:
         self.feedback = {}           # session_id -> {question_id: row}
         self._next_session_id = 1
         self._next_response_id = 1
+        # S2-4.1: Practice attempts and accessibility settings
+        self.practice_attempts = {}
+        self.user_settings = {}
+        self._next_practice_attempt_id = 1
 
         # S2-X.4: Check whether the in-memory repository is available.
     def ping(self) -> bool:
@@ -839,6 +962,51 @@ class MemoryRepository:
     def get_rubric(self, question_id) -> list:
         q = self.questions.get(question_id)
         return [{"text": c["text"], "keywords": list(c["keywords"])} for c in q["rubric"]] if q else []
+    # ---- S2-4.1: Practice, settings, and history ----
+
+    def save_practice_attempt(self, user_id, question_id, answer_text, result: dict) -> int:
+        """Store a user's practice attempt in memory."""
+        if question_id not in self.questions:
+            raise PersistenceError("Practice question not found")
+
+        attempt_id = self._next_practice_attempt_id
+        self._next_practice_attempt_id += 1
+
+        self.practice_attempts[attempt_id] = {
+            "id": attempt_id,
+            "user_id": str(user_id),
+            "question_id": question_id,
+            "answer_text": answer_text,
+            "result": dict(result),
+            "created_at": datetime.now(timezone.utc),
+        }
+        return attempt_id
+
+    def get_settings(self, user_id) -> dict | None:
+        """Retrieve a user's saved accessibility settings."""
+        settings = self.user_settings.get(str(user_id))
+        return dict(settings) if settings is not None else None
+
+    def save_settings(self, user_id, settings: dict):
+        """Save or update a user's accessibility settings."""
+        self.user_settings[str(user_id)] = dict(settings)
+
+    def discard_session(self, session_id, user_id) -> bool:
+        """Remove an unfinished interview owned by the user."""
+        session = self.sessions.get(session_id)
+
+        if session is None or session["user_id"] != str(user_id):
+            return False
+
+        if session["status"] != "in_progress":
+            return False
+
+        del self.sessions[session_id]
+        self.session_questions.pop(session_id, None)
+        self.responses.pop(session_id, None)
+        self.feedback.pop(session_id, None)
+
+        return True
 
 
 _memory_repo = None
