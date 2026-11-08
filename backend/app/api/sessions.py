@@ -146,9 +146,8 @@ def start_session(body: SessionCreate, uid: str = Depends(user_id), repo=Depends
             uid, body.job_title, body.difficulty.value, body.duration_min,
             role_id=body.role_id, interview_type=body.interview_type.value, timed=body.timed,
         )
-        # TODO S2-1.2: once the new next_question signature is merged, also pass
-        # role_id=body.role_id, interview_type=body.interview_type.value
-        qs.next_question(session_id, body.difficulty.value, repo=repo)
+        qs.next_question(session_id, body.difficulty.value, repo=repo,
+                         role_id=body.role_id, interview_type=body.interview_type.value)
         s = repo.get_session(session_id, uid)
     except qs.NoQuestionAvailable as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))

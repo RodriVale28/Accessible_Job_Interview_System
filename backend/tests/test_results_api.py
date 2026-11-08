@@ -73,7 +73,10 @@ def test_results_return_role_id_and_timed(client, user, start):
 def test_sprint1_answers_fall_back_to_keywords(client, user, start, repo):
     s = start()
     keywords = repo.get_question(s["question"]["id"])["expected_keywords"]
-    answer(client, user, s["session_id"], s["question"], keywords[0])
+    # A Sprint 1 row: saved straight to the store with only matched / missing (the API now saves criteria).
+    repo.save_answer(s["session_id"], s["question"]["id"], keywords[0], False, {
+        "score": 25, "correct": False, "matched": [keywords[0]], "missing": keywords[1:],
+        "strengths": "", "improvements": ""}, 0)
     first = client.post(f"/api/sessions/{s['session_id']}/complete", headers=user).json()["answers"][0]
     assert first["question_type"] == "Technical"
     assert first["criteria_met"] == first["matched"] == [keywords[0]]

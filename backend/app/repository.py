@@ -16,6 +16,7 @@ from typing import Any
 import psycopg
 from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
+from psycopg.types.json import Jsonb
 
 from app.config import DATABASE_URL
 
@@ -357,6 +358,7 @@ def pick_unused_question(session_id, difficulty):
                     SELECT q.id, q.prompt, q.category
                     FROM question_library AS q
                     WHERE q.difficulty = %s
+                      AND q.question_type = 'Technical'
                       AND NOT EXISTS (
                           SELECT 1
                           FROM session_questions AS sq
@@ -375,6 +377,103 @@ def pick_unused_question(session_id, difficulty):
         raise PersistenceError(
             "Could not select an unused question"
         ) from exc
+
+# ---- S2-1.2 interview builder ----
+
+def skills_with_questions(question_type) -> set:
+    """Names of skills that have at least one question of this type."""
+
+    try:
+        with _connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT DISTINCT sk.name
+                    FROM question_skills AS qs
+                    JOIN skills AS sk ON sk.id = qs.skill_id
+                    JOIN question_library AS q ON q.id = qs.question_id
+                    WHERE q.question_type = %s
+                    """,
+                    (question_type,)
+                )
+                return {r["name"] for r in cur.fetchall()}
+
+    except psycopg.Error as exc:
+        raise PersistenceError(
+            "Could not list skills with questions"
+        ) from exc
+
+
+def pick_question_for(session_id, difficulty, skills=None, question_type=None):
+    """Random unused question: {id, prompt, category} or None.
+
+    session_id None = no exclusions (practice). Relaxes to any skill, then any
+    difficulty, before giving up. Behavioral questions ignore difficulty.
+    """
+    use_difficulty = question_type != "Behavioral"
+    attempts = [(skills, use_difficulty), (None, use_difficulty)]
+    if use_difficulty:
+        attempts.append((None, False))
+
+    try:
+        with _connection() as conn:
+            with conn.cursor() as cur:
+                for skill_names, with_difficulty in attempts:
+                    sql = ["SELECT q.id, q.prompt, q.category FROM question_library AS q"]
+                    params = []
+                    if skill_names:
+                        sql.append(
+                            "JOIN question_skills AS qs ON qs.question_id = q.id "
+                            "JOIN skills AS sk ON sk.id = qs.skill_id AND sk.name = ANY(%s)"
+                        )
+                        params.append(list(skill_names))
+                    sql.append("WHERE (%s::text IS NULL OR q.question_type = %s)")
+                    params += [question_type, question_type]
+                    if with_difficulty:
+                        sql.append("AND q.difficulty = %s")
+                        params.append(difficulty)
+                    if session_id is not None:
+                        sql.append(
+                            "AND NOT EXISTS (SELECT 1 FROM session_questions AS sq "
+                            "WHERE sq.session_id = %s AND sq.question_id = q.id)"
+                        )
+                        params.append(session_id)
+                    sql.append("ORDER BY RANDOM() LIMIT 1")
+                    cur.execute(" ".join(sql), params)
+                    row = cur.fetchone()
+                    if row:
+                        return row
+                return None
+
+    except psycopg.Error as exc:
+        raise PersistenceError(
+            "Could not select a question"
+        ) from exc
+
+
+def count_session_question_types(session_id) -> dict:
+    """How many Technical / Behavioral questions a session has been given: {type: count}."""
+
+    try:
+        with _connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT q.question_type, COUNT(*) AS n
+                    FROM session_questions AS sq
+                    JOIN question_library AS q ON q.id = sq.question_id
+                    WHERE sq.session_id = %s
+                    GROUP BY q.question_type
+                    """,
+                    (session_id,)
+                )
+                return {r["question_type"]: r["n"] for r in cur.fetchall()}
+
+    except psycopg.Error as exc:
+        raise PersistenceError(
+            "Could not count question types"
+        ) from exc
+
 
 def record_asked_question(session_id, question_id, q_index):
     """Record a question assigned to an interview session."""
@@ -669,6 +768,124 @@ def get_rubric(question_id) -> list:
         ) from exc
 
 
+# ---- S2-4.1: Practice, settings, and history (PostgreSQL) ----
+
+def save_practice_attempt(user_id, question_id, answer_text, result: dict) -> int:
+    """Save a practice attempt and grading result."""
+    try:
+        with _connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO practice_attempts
+                        (user_id, question_id, answer_text, result)
+                    VALUES (%s, %s, %s, %s)
+                    RETURNING id
+                    """,
+                    (user_id, question_id, answer_text, Jsonb(result)),
+                )
+                return cur.fetchone()["id"]
+    except psycopg.Error as exc:
+        raise PersistenceError("Could not save practice attempt") from exc
+
+
+def get_settings(user_id) -> dict | None:
+    """Retrieve a user's accessibility settings."""
+    try:
+        with _connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT text_size, theme, font, read_aloud
+                    FROM user_settings
+                    WHERE user_id = %s
+                    """,
+                    (user_id,),
+                )
+                return cur.fetchone()
+    except psycopg.Error as exc:
+        raise PersistenceError("Could not retrieve settings") from exc
+
+
+def save_settings(user_id, settings: dict):
+    """Save or update a user's accessibility settings."""
+    try:
+        with _connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO user_settings
+                        (user_id, text_size, theme, font, read_aloud)
+                    VALUES (%s, %s, %s, %s, %s)
+                    ON CONFLICT (user_id)
+                    DO UPDATE SET
+                        text_size = EXCLUDED.text_size,
+                        theme = EXCLUDED.theme,
+                        font = EXCLUDED.font,
+                        read_aloud = EXCLUDED.read_aloud,
+                        updated_at = NOW()
+                    """,
+                    (
+                        user_id,
+                        settings["text_size"],
+                        settings["theme"],
+                        settings["font"],
+                        settings["read_aloud"],
+                    ),
+                )
+    except psycopg.Error as exc:
+        raise PersistenceError("Could not save settings") from exc
+
+
+def discard_session(session_id, user_id) -> bool:
+    """Discard an unfinished interview belonging to the user."""
+    try:
+        with _connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT id
+                    FROM sessions
+                    WHERE id = %s
+                      AND user_id = %s
+                      AND status = 'in_progress'
+                    FOR UPDATE
+                    """,
+                    (session_id, user_id),
+                )
+
+                if cur.fetchone() is None:
+                    return False
+
+                cur.execute(
+                    "DELETE FROM feedback WHERE session_id = %s",
+                    (session_id,),
+                )
+                cur.execute(
+                    "DELETE FROM responses WHERE session_id = %s",
+                    (session_id,),
+                )
+                cur.execute(
+                    "DELETE FROM session_questions WHERE session_id = %s",
+                    (session_id,),
+                )
+                cur.execute(
+                    """
+                    DELETE FROM sessions
+                    WHERE id = %s
+                      AND user_id = %s
+                      AND status = 'in_progress'
+                    RETURNING id
+                    """,
+                    (session_id, user_id),
+                )
+
+                return cur.fetchone() is not None
+    except psycopg.Error as exc:
+        raise PersistenceError("Could not discard interview") from exc
+
+# ---- S2-4.1: Practice, settings, and history (PostgreSQL) ----
+
 def _question_dict(q) -> dict:
     """A question in the S2 dict shape; Sprint 1 tuples (category, difficulty, prompt, keywords) still load."""
     if not isinstance(q, dict):
@@ -710,6 +927,10 @@ class MemoryRepository:
         self.feedback = {}           # session_id -> {question_id: row}
         self._next_session_id = 1
         self._next_response_id = 1
+        # S2-4.1: Practice attempts and accessibility settings
+        self.practice_attempts = {}
+        self.user_settings = {}
+        self._next_practice_attempt_id = 1
 
         # S2-X.4: Check whether the in-memory repository is available.
     def ping(self) -> bool:
@@ -758,7 +979,9 @@ class MemoryRepository:
 
     def pick_unused_question(self, session_id, difficulty):
         used = {q["question_id"] for q in self.session_questions.get(session_id, [])}
-        options = [q for q in self.questions.values() if q["difficulty"] == difficulty and q["id"] not in used]
+        options = [q for q in self.questions.values()
+                   if q["difficulty"] == difficulty and q["question_type"] == "Technical"
+                   and q["id"] not in used]
         if not options:
             return None
         q = random.choice(options)
@@ -769,6 +992,41 @@ class MemoryRepository:
         if any(q["question_id"] == question_id or q["q_index"] == q_index for q in asked):
             raise PersistenceError("Could not record asked question")
         asked.append({"question_id": question_id, "q_index": q_index})
+
+    # S2-1.2 interview builder
+    def skills_with_questions(self, question_type) -> set:
+        """Names of skills that have at least one question of this type."""
+        return {s for q in self.questions.values()
+                if q["question_type"] == question_type
+                for s in q["skills"]}
+
+    def pick_question_for(self, session_id, difficulty, skills=None, question_type=None):
+        used = set()
+        if session_id is not None:
+            used = {q["question_id"] for q in self.session_questions.get(session_id, [])}
+        use_difficulty = question_type != "Behavioral"
+        attempts = [(skills, use_difficulty), (None, use_difficulty)]
+        if use_difficulty:
+            attempts.append((None, False))
+        for skill_names, with_difficulty in attempts:
+            options = [
+                q for q in self.questions.values()
+                if q["id"] not in used
+                and (question_type is None or q["question_type"] == question_type)
+                and (not with_difficulty or q["difficulty"] == difficulty)
+                and (not skill_names or set(skill_names) & set(q["skills"]))
+            ]
+            if options:
+                q = random.choice(options)
+                return {"id": q["id"], "prompt": q["prompt"], "category": q["category"]}
+        return None
+
+    def count_session_question_types(self, session_id) -> dict:
+        counts = {}
+        for a in self.session_questions.get(session_id, []):
+            t = self.questions[a["question_id"]]["question_type"]
+            counts[t] = counts.get(t, 0) + 1
+        return counts
 
     def asked_questions(self, session_id) -> list:
         return sorted((dict(q) for q in self.session_questions.get(session_id, [])), key=lambda q: q["q_index"])
@@ -839,6 +1097,51 @@ class MemoryRepository:
     def get_rubric(self, question_id) -> list:
         q = self.questions.get(question_id)
         return [{"text": c["text"], "keywords": list(c["keywords"])} for c in q["rubric"]] if q else []
+    # ---- S2-4.1: Practice, settings, and history ----
+
+    def save_practice_attempt(self, user_id, question_id, answer_text, result: dict) -> int:
+        """Store a user's practice attempt in memory."""
+        if question_id not in self.questions:
+            raise PersistenceError("Practice question not found")
+
+        attempt_id = self._next_practice_attempt_id
+        self._next_practice_attempt_id += 1
+
+        self.practice_attempts[attempt_id] = {
+            "id": attempt_id,
+            "user_id": str(user_id),
+            "question_id": question_id,
+            "answer_text": answer_text,
+            "result": dict(result),
+            "created_at": datetime.now(timezone.utc),
+        }
+        return attempt_id
+
+    def get_settings(self, user_id) -> dict | None:
+        """Retrieve a user's saved accessibility settings."""
+        settings = self.user_settings.get(str(user_id))
+        return dict(settings) if settings is not None else None
+
+    def save_settings(self, user_id, settings: dict):
+        """Save or update a user's accessibility settings."""
+        self.user_settings[str(user_id)] = dict(settings)
+
+    def discard_session(self, session_id, user_id) -> bool:
+        """Remove an unfinished interview owned by the user."""
+        session = self.sessions.get(session_id)
+
+        if session is None or session["user_id"] != str(user_id):
+            return False
+
+        if session["status"] != "in_progress":
+            return False
+
+        del self.sessions[session_id]
+        self.session_questions.pop(session_id, None)
+        self.responses.pop(session_id, None)
+        self.feedback.pop(session_id, None)
+
+        return True
 
 
 _memory_repo = None

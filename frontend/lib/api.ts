@@ -53,7 +53,6 @@ export const startSession = (body: {
     body: JSON.stringify({ interview_type: 'Technical', ...body }),
   });
 
-// TODO S2-1.3: set to false once GET /api/roles and POST /api/roles/match are merged and live.
 export const getRoles = () => api<Role[]>('/api/roles');
 
 export const matchRole = (job_title: string) =>
@@ -68,38 +67,101 @@ export const getResults = (id: number | string) => api<Results>(`/api/sessions/$
 
 export const listSessions = () => api<SessionSummary[]>('/api/sessions');
 
-// TODO S2-4.1: replace practice stand-ins when the practice endpoints are merged.
-const PRACTICE_QUESTIONS: Question[] = [
-  { id: 1, prompt: 'How would you explain a technical idea to someone who is new to it?', category: 'Communication' },
-  { id: 2, prompt: 'Tell me about a time you solved a difficult problem.', category: 'Behavioral' },
-  { id: 3, prompt: 'How do you prioritize tasks when several deadlines are close?', category: 'Planning' },
-];
+// S2-4.2: practice and discard (S2-4.1 endpoints).
+export const getPracticeQuestion = (body: {
+  question_id?: number; role_id?: number; skill?: string; interview_type?: InterviewType; difficulty?: Difficulty;
+}) => api<Question>('/api/practice/question', { method: 'POST', body: JSON.stringify(body) });
 
-export async function getPracticeQuestion(input: { question_id?: number; role_id?: number; skill?: string; interview_type?: InterviewType; difficulty?: Difficulty }): Promise<Question> {
-  const selected = PRACTICE_QUESTIONS.find((q) => q.id === input.question_id) ?? PRACTICE_QUESTIONS[0];
-  return selected;
-}
+export const submitPracticeAnswer = (body: { question_id: number; text: string }) =>
+  api<PracticeResult>('/api/practice/answer', { method: 'POST', body: JSON.stringify(body) });
 
-export async function submitPracticeAnswer(input: { question_id: number; text: string }): Promise<PracticeResult> {
-  const question = PRACTICE_QUESTIONS.find((q) => q.id === input.question_id) ?? PRACTICE_QUESTIONS[0];
-  const answered = input.text.trim().length > 0;
-  const score = answered ? 70 : 0;
-  return {
-    question_id: question.id,
-    prompt: question.prompt,
-    answer: input.text,
-    score,
-    correct: score >= 50,
-    criteria_met: answered ? ['Shares a clear and relevant response.'] : [],
-    criteria_missed: answered ? ['Adds a specific example or next step.'] : ['Share an example or approach you would use.'],
-    evidence: answered ? [input.text.trim()] : [],
-    grader: 'keyword',
-    strengths: answered ? 'You shared a clear starting point.' : 'You can take your time and try this question when you are ready.',
-    improvements: answered ? 'Add one specific example to make your answer easier to follow.' : 'Try answering with one example or step.',
-  };
-}
+export const discardSession = (id: number | string) =>
+  api<void>(`/api/sessions/${id}`, { method: 'DELETE' });
 
-// TODO S2-4.1: use the DELETE endpoint once the discard router is merged.
-export async function discardSession(_id: number | string): Promise<void> {
-  return;
-}
+// TODO S2-2.2: Replace this development sample with live results once the
+// Sprint 2 results API contract is available.
+export const getSampleResults = (): Results => ({
+  session_id: 1,
+  job_title: 'Software Engineer',
+  interview_type: 'Mixed',
+  difficulty: 'Medium',
+  duration_min: 15,
+  overall_score: 75,
+  label: 'Getting there',
+  correct_count: 1,
+  answered_count: 2,
+  missed_count: 1,
+  total: 3,
+  strengths: 'You explained your approach clearly and included useful examples.',
+  improvements: 'Try to explain the result of your actions more clearly.',
+  completed_at: null,
+  role_id: null,
+  timed: false,
+  answers: [
+    {
+      q_index: 0,
+      question_id: 101,
+      category: 'Behavioral',
+      prompt: 'Tell me about a time you solved a difficult problem.',
+      answer: 'I found the cause of an issue, planned a solution, and worked with my team to fix it.',
+      status: 'answered',
+      score: 80,
+      correct: true,
+      matched: ['problem', 'solution'],
+      missing: ['result'],
+      strengths: 'You explained the problem and the action you took.',
+      improvements: 'Explain the final result of your actions.',
+      question_type: 'Behavioral',
+      criteria_met: [
+        'Situation: Describe the situation.',
+        'Task: Explain your responsibility.',
+        'Action: Describe the steps you took.',
+      ],
+      criteria_missed: ['Result: Explain the outcome of your actions.'],
+      evidence: [
+        'I found the cause of an issue',
+        'worked with my team',
+        'planned a solution',
+      ],
+      grader: 'keyword',
+    },
+    {
+      q_index: 1,
+      question_id: 102,
+      category: 'Technical',
+      prompt: 'What is the purpose of a hash table?',
+      answer: 'A hash table stores key-value pairs and helps find values quickly.',
+      status: 'answered',
+      score: 70,
+      correct: true,
+      matched: ['key-value pairs', 'quickly'],
+      missing: ['hash function'],
+      strengths: 'You explained the main purpose of a hash table.',
+      improvements: 'Mention how a hash function helps locate values.',
+      question_type: 'Technical',
+      criteria_met: ['Explain that a hash table stores key-value pairs.'],
+      criteria_missed: ['Explain how a hash function maps keys to locations.'],
+      evidence: ['A hash table stores key-value pairs'],
+      grader: 'ai',
+    },
+    {
+      q_index: 2,
+      question_id: 103,
+      category: 'Technical',
+      prompt: 'What is a binary search tree?',
+      answer: '',
+      status: 'blank',
+      score: 0,
+      correct: false,
+      matched: [],
+      missing: [],
+      strengths: '',
+      improvements: '',
+      question_type: 'Technical',
+      criteria_met: [],
+      criteria_missed: [],
+      evidence: [],
+      grader: null,
+    },
+  ],
+});

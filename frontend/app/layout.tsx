@@ -4,6 +4,8 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { MarkIcon, ShieldIcon } from '@/components/Icons';
 import { AccountMenu, AuthGate } from '@/components/AuthGate';
+import { SettingsPanel } from '@/components/SettingsPanel';
+import { SETTINGS_INIT_SCRIPT } from '@/lib/settings';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -14,6 +16,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: SETTINGS_INIT_SCRIPT }} />
+      </head>
       <body suppressHydrationWarning>
         <a href="#main" className="skip">Skip to content</a>
         <div className="page">
@@ -21,6 +26,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <div className="wrap">
               <Link href="/" className="brand"><span className="mark"><MarkIcon /></span>Interview Studio</Link>
               <div className="spacer" />
+              <SettingsPanel />
               <Link href="/setup" className="chip-btn">New interview</Link>
               <AccountMenu />
             </div>

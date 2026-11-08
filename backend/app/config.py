@@ -23,3 +23,16 @@ SUPABASE_URL = os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
 # Local dev, tests and CI only: accept a browser guest id (X-User-Id) instead of a login.
 # Never set this on Render.
 ALLOW_GUEST = os.environ.get("ALLOW_GUEST", "").strip().lower() in ("1", "true", "yes")
+
+# ---- S2-2.1 AI grading (Gemini Flash-Lite through its OpenAI-compatible endpoint) ----
+# AI_ENABLED=0 turns ALL AI off (grading, role matching, feedback); keyword grading is used.
+# Nothing is ever called until AI_API_KEY and LLM_MODEL are both set.
+AI_ENABLED = os.environ.get("AI_ENABLED", "1").strip().lower() in ("1", "true", "yes")
+AI_BASE_URL = os.environ.get(
+    "AI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai"
+).strip().rstrip("/")
+# Render env var only. Never in code, never in the browser, never committed.
+AI_API_KEY = os.environ.get("AI_API_KEY", "").strip()
+# The current Gemini Flash-Lite model name from Google AI Studio. No default: AI stays off until set.
+LLM_MODEL = os.environ.get("LLM_MODEL", "").strip()
+AI_TIMEOUT_SECONDS = float(os.environ.get("AI_TIMEOUT_SECONDS", "10"))
