@@ -19,6 +19,18 @@ def _default_repo():
     from app import repository
     return repository
 
+def _pick_skills(repo, role, qtype):
+    """Draw one skill by the role's weights, only among skills that have
+    questions of this type. None means any skill."""
+    if not role or not role.get("skills"):
+        return None
+    available = repo.skills_with_questions(qtype)
+    weighted = {s: w for s, w in role["skills"].items() if s in available}
+    if not weighted:
+        return None
+    names, weights = zip(*weighted.items())
+    return [random.choices(names, weights=weights, k=1)[0]]
+
 
 def next_question(session_id: int, difficulty: str, repo=None,
                   role_id=None, interview_type: str = "Technical") -> dict:
@@ -41,10 +53,6 @@ def next_question(session_id: int, difficulty: str, repo=None,
         question = repo.pick_unused_question(session_id, difficulty)  # Sprint 1 behaviour
     else:
         role = repo.get_role(role_id) if role_id is not None else None
-        skills = None
-        if role and role.get("skills"):
-            names, weights = zip(*role["skills"].items())
-            skills = [random.choices(names, weights=weights, k=1)[0]]
         if interview_type == "Mixed":
             share = role["technical_share"] if role else 0.5
             technical = repo.count_session_question_types(session_id).get("Technical", 0)
@@ -52,10 +60,12 @@ def next_question(session_id: int, difficulty: str, repo=None,
             qtype = "Technical" if technical < wanted else "Behavioral"
         else:
             qtype = interview_type
+        skills = _pick_skills(repo, role, qtype)
         question = repo.pick_question_for(session_id, difficulty, skills, qtype)
         if question is None and interview_type == "Mixed":
             other = "Behavioral" if qtype == "Technical" else "Technical"
-            question = repo.pick_question_for(session_id, difficulty, None, other)
+            question = repo.pick_question_for(
+                session_id, difficulty, _pick_skills(repo, role, other), other)
     if question is None:
         raise NoQuestionAvailable(f"No {difficulty} questions available.", "library_empty")
 

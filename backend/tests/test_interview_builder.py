@@ -111,3 +111,30 @@ def test_pool_exhausted_raises(lib):
     next_question(sid, "Medium", repo=repo)
     with pytest.raises(NoQuestionAvailable):
         next_question(sid, "Medium", repo=repo)
+
+
+
+
+def test_technical_interview_only_asks_role_skills_with_technical_questions():
+    """A skill with only Behavioral questions must never be drawn for a Technical
+    interview; the role's skill mix must hold instead of silently falling back."""
+    questions, n = [], 0
+    for skill in ("sql", "statistics", "networking"):  # networking is not in the role
+        for _ in range(12):
+            n += 1
+            questions.append(make_question(n, "Technical", "Medium", skill))
+    for _ in range(6):
+        n += 1
+        questions.append(make_question(n, "Behavioral", "Medium", "communication"))
+    roles = [{"name": "Analyst", "keywords": ["analyst"], "technical_share": 0.6,
+              "skills": {"sql": 0.5, "statistics": 0.3, "communication": 0.2}}]
+    repo = MemoryRepository(questions=questions, roles=roles)
+
+    assert repo.skills_with_questions("Technical") == {"sql", "statistics", "networking"}
+    assert "communication" not in repo.skills_with_questions("Technical")
+
+    role_technical_skills = {"sql", "statistics"}
+    for _ in range(20):  # the old bug failed about half of single interviews
+        _, ids = run_interview(repo, 1, "Technical")
+        for qid in ids:
+            assert set(repo.questions[qid]["skills"]) <= role_technical_skills
