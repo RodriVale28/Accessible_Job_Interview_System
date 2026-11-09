@@ -30,6 +30,11 @@ class AlreadyAnswered(PersistenceError):
     pass
 
 
+class SessionClosed(PersistenceError):
+    """Raised when an answer arrives after the interview was completed or discarded."""
+    pass
+
+
 QUESTION_COUNTS = {
     15: 5,
     30: 8,
@@ -192,8 +197,13 @@ def save_response(session_id, question_id, user_id, text) -> int:
             "Could not save interview response"
         ) from exc
 
-def complete_session(session_id, user_id, overall_score) -> None:
-    """Mark an interview session as completed."""
+def complete_session(session_id, user_id, overall_score, answered=None) -> None:
+    """Mark an interview session as completed.
+
+    The session row is locked first (save_answer takes the same lock), so an answer
+    cannot land between scoring and completing. If `answered` is given and the saved
+    answer count differs, the score is stale: raise so the caller re-scores.
+    """
 
     if overall_score is not None and not 0 <= overall_score <= 100:
         raise ValueError("Overall score must be between 0 and 100")
@@ -203,22 +213,36 @@ def complete_session(session_id, user_id, overall_score) -> None:
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    UPDATE sessions
-                    SET status = 'completed',
-                        overall_score = %s,
-                        completed_at = NOW()
-                    WHERE id = %s
-                      AND user_id = %s
-                      AND status = 'in_progress'
-                    RETURNING id
+                    SELECT id FROM sessions
+                    WHERE id = %s AND user_id = %s AND status = 'in_progress'
+                    FOR UPDATE
                     """,
-                    (overall_score, session_id, user_id)
+                    (session_id, user_id)
                 )
 
                 if cur.fetchone() is None:
                     raise PersistenceError(
                         "Active interview session not found"
                     )
+
+                if answered is not None:
+                    cur.execute(
+                        "SELECT COUNT(*) AS n FROM responses WHERE session_id = %s",
+                        (session_id,)
+                    )
+                    if cur.fetchone()["n"] != answered:
+                        raise PersistenceError("Answers changed while finishing")
+
+                cur.execute(
+                    """
+                    UPDATE sessions
+                    SET status = 'completed',
+                        overall_score = %s,
+                        completed_at = NOW()
+                    WHERE id = %s
+                    """,
+                    (overall_score, session_id)
+                )
 
     except psycopg.Error as exc:
         raise PersistenceError(
@@ -637,6 +661,15 @@ def save_answer(session_id, question_id, text, is_blank, feedback, correct_count
     try:
         with _connection() as conn:
             with conn.cursor() as cur:
+                # Same lock as complete_session: the interview cannot end mid-save.
+                cur.execute(
+                    "SELECT status FROM sessions WHERE id = %s FOR UPDATE",
+                    (session_id,)
+                )
+                session = cur.fetchone()
+                if session is None or session["status"] != "in_progress":
+                    raise SessionClosed("Interview is no longer in progress")
+
                 cur.execute(
                     """
                     INSERT INTO responses
@@ -1042,6 +1075,8 @@ class MemoryRepository:
         return {qid: dict(f) for qid, f in self.feedback.get(session_id, {}).items()}
 
     def save_answer(self, session_id, question_id, text, is_blank, feedback, correct_count) -> int:
+        if self.sessions.get(session_id, {}).get("status") != "in_progress":
+            raise SessionClosed("Interview is no longer in progress")
         if question_id in self.responses[session_id]:
             raise AlreadyAnswered("Question already answered")
         response_id = self._next_response_id
@@ -1054,12 +1089,14 @@ class MemoryRepository:
         self.sessions[session_id]["correct_count"] = correct_count
         return response_id
 
-    def complete_session(self, session_id, user_id, overall_score) -> None:
+    def complete_session(self, session_id, user_id, overall_score, answered=None) -> None:
         if overall_score is not None and not 0 <= overall_score <= 100:
             raise ValueError("Overall score must be between 0 and 100")
         s = self.sessions.get(session_id)
         if not s or s["user_id"] != str(user_id) or s["status"] != "in_progress":
             raise PersistenceError("Active interview session not found")
+        if answered is not None and len(self.responses.get(session_id, {})) != answered:
+            raise PersistenceError("Answers changed while finishing")
         s.update(status="completed", overall_score=overall_score, completed_at=datetime.now(timezone.utc))
 
     def get_session_with_responses(self, session_id, user_id):

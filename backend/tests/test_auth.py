@@ -81,3 +81,12 @@ def test_guest_id_works_when_allowed(client, monkeypatch):
     guest = {"X-User-Id": str(uuid.uuid4())}
     assert client.post("/api/sessions", headers=guest, json=SETUP).status_code == 201
     assert len(client.get("/api/sessions", headers=guest).json()) == 1
+
+
+def test_key_server_failure_is_503_not_a_logout(client, monkeypatch):
+    """If Supabase's public keys cannot be fetched the user is not logged out (no 401)."""
+    def down(_t):
+        raise jwt.PyJWKClientConnectionError("key server down")
+
+    monkeypatch.setattr(deps, "_jwks", SimpleNamespace(get_signing_key_from_jwt=down))
+    assert client.post("/api/sessions", headers=token(), json=SETUP).status_code == 503

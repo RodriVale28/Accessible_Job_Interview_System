@@ -153,13 +153,18 @@ def _load(repo, session_id: int, uid: str) -> dict:
 
 @router.post("/sessions/{session_id}/complete", response_model=ResultsOut)
 def complete(session_id: int, uid: str = Depends(user_id), repo=Depends(get_repo)):
-    data = _load(repo, session_id, uid)
-    if data["session"]["status"] == "completed":
-        return _build(data)  # finishing twice (double click, retry) just returns the results
-    results = _build(data)
-    try:
-        repo.complete_session(session_id, uid, results.overall_score)
-    except PersistenceError:
+    for _ in range(3):  # a retry covers a second /complete or an answer landing mid-scoring
+        data = _load(repo, session_id, uid)
+        if data["session"]["status"] == "completed":
+            return _build(data)  # finishing twice (double click, retry) just returns the results
+        results = _build(data)
+        try:
+            repo.complete_session(session_id, uid, results.overall_score,
+                                  answered=sum(1 for r in data["questions"] if r["response_id"] is not None))
+            break
+        except PersistenceError:
+            continue
+    else:
         raise HTTPException(status_code=503, detail="Could not finish the interview. Please retry.")
     # Reload so completed_at reflects what was saved.
     return _build(_load(repo, session_id, uid))

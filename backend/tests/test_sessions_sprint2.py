@@ -1,6 +1,8 @@
 """S2-1.3 Tests: sessions accept role_id, interview_type and an optional timer."""
 from datetime import timedelta
 
+import pytest
+
 
 
 
@@ -93,3 +95,15 @@ def test_timer_flag_must_be_a_boolean(client, user):
 def test_start_logged_out_401(client):
     r = client.post("/api/sessions", json={"job_title": "Analyst", "difficulty": "Easy", "duration_min": 15})
     assert r.status_code == 401
+
+
+def test_failure_after_create_leaves_no_empty_session(client, user, repo, monkeypatch):
+    """session_state blowing up must not leave an in-progress session behind."""
+    def boom(*args, **kwargs):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr("app.api.sessions.session_state", boom)
+    with pytest.raises(RuntimeError):
+        client.post("/api/sessions", headers=user,
+                    json={"job_title": "Dev", "difficulty": "Easy", "duration_min": 15})
+    assert repo.list_sessions(user["X-User-Id"]) == []

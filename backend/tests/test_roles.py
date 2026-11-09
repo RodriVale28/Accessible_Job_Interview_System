@@ -97,3 +97,9 @@ def test_match_bad_input_422(client, user, fake_roles, payload):
 def test_logged_out_401(client, fake_roles):
     assert client.get("/api/roles").status_code == 401
     assert client.post("/api/roles/match", json={"job_title": "x"}).status_code == 401
+
+
+def test_role_match_accepts_a_120_character_title(client, user):
+    """Sessions allow 120 characters, so role matching must too."""
+    assert client.post("/api/roles/match", headers=user, json={"job_title": "a" * 120}).status_code == 200
+    assert client.post("/api/roles/match", headers=user, json={"job_title": "a" * 121}).status_code == 422

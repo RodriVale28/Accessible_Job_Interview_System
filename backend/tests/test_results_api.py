@@ -91,3 +91,42 @@ def test_skip_never_appears_in_strengths(client, user, start):
     assert "skip" not in body["answers"][0]["strengths"].lower()
     assert "skip" not in body["strengths"].lower()
     assert "You skipped" in body["improvements"]  # the skip lives under improvements only
+
+
+def test_second_complete_while_first_is_finishing_returns_the_results(client, user, start, repo, monkeypatch):
+    """Two /complete calls at once: the loser gets the stored results, not a 503."""
+    s = start()
+    sid = s["session_id"]
+    real, inner = repo.complete_session, []
+
+    def racing(*args, **kwargs):
+        if not inner:
+            inner.append(None)  # mark first so the nested call does not race again
+            inner[0] = client.post(f"/api/sessions/{sid}/complete", headers=user)
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(repo, "complete_session", racing)
+    outer = client.post(f"/api/sessions/{sid}/complete", headers=user)
+
+    assert inner[0].status_code == 200 and outer.status_code == 200
+    assert outer.json() == inner[0].json()
+    assert repo.get_session(sid, user["X-User-Id"])["status"] == "completed"
+
+
+def test_complete_rescores_when_an_answer_lands_mid_scoring(client, user, start, repo, monkeypatch):
+    """An answer saved between scoring and completing makes the score stale: /complete re-scores."""
+    s = start()
+    sid, q = s["session_id"], s["question"]
+    keywords = " ".join(repo.get_question(q["id"])["expected_keywords"])
+    real, once = repo.complete_session, []
+
+    def late_answer(*args, **kwargs):
+        if not once:
+            once.append(1)
+            answer(client, user, sid, q, keywords)
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(repo, "complete_session", late_answer)
+    body = client.post(f"/api/sessions/{sid}/complete", headers=user).json()
+
+    assert body["overall_score"] == 20 and body["answered_count"] == 1

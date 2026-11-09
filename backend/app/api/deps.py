@@ -35,6 +35,9 @@ def user_id(
             raise HTTPException(status_code=500, detail="Login is not configured on the server.")
         try:
             return _verify_token(authorization[7:].strip())
+        except jwt.PyJWKClientConnectionError:
+            # The key server is down: not the user's fault, so do not log them out.
+            raise HTTPException(status_code=503, detail="Login service is unavailable. Please retry.")
         except (jwt.PyJWTError, KeyError, ValueError):
             raise HTTPException(status_code=401, detail="Your login has expired. Please log in again.")
     if config.ALLOW_GUEST and x_user_id:
