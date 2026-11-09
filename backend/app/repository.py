@@ -428,16 +428,21 @@ def skills_with_questions(question_type) -> set:
         ) from exc
 
 
-def pick_question_for(session_id, difficulty, skills=None, question_type=None):
+def _pick_attempts(skills, role_skills, question_type):
+    """(skills, use difficulty) steps, loosest last: the drawn skill, then any of
+    the role's skills, then any skill. Staying on the role beats keeping the difficulty."""
+    d = question_type != "Behavioral"
+    steps = [(skills, d), (role_skills, d), (role_skills, False), (None, d), (None, False)]
+    return [s for i, s in enumerate(steps) if s not in steps[:i]]
+
+
+def pick_question_for(session_id, difficulty, skills=None, question_type=None, role_skills=None):
     """Random unused question: {id, prompt, category} or None.
 
-    session_id None = no exclusions (practice). Relaxes to any skill, then any
-    difficulty, before giving up. Behavioral questions ignore difficulty.
+    session_id None = no exclusions (practice). Relaxes to the role's other
+    skills, then any skill, before giving up. Behavioral questions ignore difficulty.
     """
-    use_difficulty = question_type != "Behavioral"
-    attempts = [(skills, use_difficulty), (None, use_difficulty)]
-    if use_difficulty:
-        attempts.append((None, False))
+    attempts = _pick_attempts(skills, role_skills, question_type)
 
     try:
         with _connection() as conn:
@@ -1033,15 +1038,11 @@ class MemoryRepository:
                 if q["question_type"] == question_type
                 for s in q["skills"]}
 
-    def pick_question_for(self, session_id, difficulty, skills=None, question_type=None):
+    def pick_question_for(self, session_id, difficulty, skills=None, question_type=None, role_skills=None):
         used = set()
         if session_id is not None:
             used = {q["question_id"] for q in self.session_questions.get(session_id, [])}
-        use_difficulty = question_type != "Behavioral"
-        attempts = [(skills, use_difficulty), (None, use_difficulty)]
-        if use_difficulty:
-            attempts.append((None, False))
-        for skill_names, with_difficulty in attempts:
+        for skill_names, with_difficulty in _pick_attempts(skills, role_skills, question_type):
             options = [
                 q for q in self.questions.values()
                 if q["id"] not in used

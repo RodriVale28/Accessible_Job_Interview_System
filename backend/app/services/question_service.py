@@ -60,12 +60,13 @@ def next_question(session_id: int, difficulty: str, repo=None,
             qtype = "Technical" if technical < wanted else "Behavioral"
         else:
             qtype = interview_type
+        role_skills = list(role["skills"]) if role and role.get("skills") else None
         skills = _pick_skills(repo, role, qtype)
-        question = repo.pick_question_for(session_id, difficulty, skills, qtype)
+        question = repo.pick_question_for(session_id, difficulty, skills, qtype, role_skills)
         if question is None and interview_type == "Mixed":
             other = "Behavioral" if qtype == "Technical" else "Technical"
             question = repo.pick_question_for(
-                session_id, difficulty, _pick_skills(repo, role, other), other)
+                session_id, difficulty, _pick_skills(repo, role, other), other, role_skills)
     if question is None:
         raise NoQuestionAvailable(f"No {difficulty} questions available.", "library_empty")
 

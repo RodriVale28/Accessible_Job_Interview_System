@@ -25,7 +25,7 @@ BEHAVIORAL_QUESTIONS = [
         'question_type': 'Behavioral',
         'prompt': 'Tell me about a time you explained a confusing policy to a customer.',
         'expected_keywords': ['situation', 'example', 'task', 'responsibility', 'action', 'steps', 'result', 'outcome'],
-        'skills': ['communication'],
+        'skills': ['customer service'],
         'rubric': [
             {'text': 'Situation: Describes a customer confused by a particular policy.', 'keywords': ['situation', 'example']},
             {'text': 'Task: Explains the need to make the policy understandable.', 'keywords': ['task', 'responsibility']},
@@ -39,7 +39,7 @@ BEHAVIORAL_QUESTIONS = [
         'question_type': 'Behavioral',
         'prompt': 'Describe a time you worked with coworkers during a busy shift.',
         'expected_keywords': ['situation', 'example', 'task', 'responsibility', 'action', 'steps', 'result', 'outcome'],
-        'skills': ['teamwork'],
+        'skills': ['customer service', 'teamwork'],
         'rubric': [
             {'text': 'Situation: Describes a busy shift that required coworkers to help each other.', 'keywords': ['situation', 'example']},
             {'text': 'Task: Explains the shared work that needed to be finished.', 'keywords': ['task', 'responsibility']},
@@ -81,7 +81,7 @@ BEHAVIORAL_QUESTIONS = [
         'question_type': 'Behavioral',
         'prompt': 'Tell me about a time you made a mistake while helping a customer.',
         'expected_keywords': ['situation', 'example', 'task', 'responsibility', 'action', 'steps', 'result', 'outcome'],
-        'skills': ['problem solving'],
+        'skills': ['customer service'],
         'rubric': [
             {'text': 'Situation: Describes a specific mistake made during customer service.', 'keywords': ['situation', 'example']},
             {'text': 'Task: Explains the responsibility to correct the mistake.', 'keywords': ['task', 'responsibility']},
@@ -109,7 +109,7 @@ BEHAVIORAL_QUESTIONS = [
         'question_type': 'Behavioral',
         'prompt': 'Describe a time you explained a technical problem to someone without a technical background.',
         'expected_keywords': ['situation', 'example', 'task', 'responsibility', 'action', 'steps', 'result', 'outcome'],
-        'skills': ['communication'],
+        'skills': ['troubleshooting', 'software engineering'],
         'rubric': [
             {'text': 'Situation: Describes a technical issue that another person did not understand.', 'keywords': ['situation', 'example']},
             {'text': 'Task: Explains the need to communicate the issue clearly.', 'keywords': ['task', 'responsibility']},
@@ -123,7 +123,7 @@ BEHAVIORAL_QUESTIONS = [
         'question_type': 'Behavioral',
         'prompt': 'Tell me about a time you had to solve a technical problem under pressure.',
         'expected_keywords': ['situation', 'example', 'task', 'responsibility', 'action', 'steps', 'result', 'outcome'],
-        'skills': ['problem solving'],
+        'skills': ['troubleshooting', 'software engineering'],
         'rubric': [
             {'text': 'Situation: Describes an urgent technical issue and why it was stressful.', 'keywords': ['situation', 'example']},
             {'text': 'Task: Explains the technical problem that needed attention.', 'keywords': ['task', 'responsibility']},
@@ -137,7 +137,7 @@ BEHAVIORAL_QUESTIONS = [
         'question_type': 'Behavioral',
         'prompt': 'Describe a time you worked with another person to fix a technical issue.',
         'expected_keywords': ['situation', 'example', 'task', 'responsibility', 'action', 'steps', 'result', 'outcome'],
-        'skills': ['teamwork'],
+        'skills': ['troubleshooting', 'teamwork'],
         'rubric': [
             {'text': 'Situation: Describes a technical issue that required collaboration.', 'keywords': ['situation', 'example']},
             {'text': 'Task: Explains the shared goal and individual responsibilities.', 'keywords': ['task', 'responsibility']},
@@ -193,7 +193,7 @@ BEHAVIORAL_QUESTIONS = [
         'question_type': 'Behavioral',
         'prompt': 'Describe a time you found and fixed a difficult bug.',
         'expected_keywords': ['situation', 'example', 'task', 'responsibility', 'action', 'steps', 'result', 'outcome'],
-        'skills': ['problem solving'],
+        'skills': ['software engineering'],
         'rubric': [
             {'text': 'Situation: Describes a bug and how it affected the program.', 'keywords': ['situation', 'example']},
             {'text': 'Task: Explains the need to identify and correct the bug.', 'keywords': ['task', 'responsibility']},
@@ -207,7 +207,7 @@ BEHAVIORAL_QUESTIONS = [
         'question_type': 'Behavioral',
         'prompt': 'Tell me about a time you received feedback on your code.',
         'expected_keywords': ['situation', 'example', 'task', 'responsibility', 'action', 'steps', 'result', 'outcome'],
-        'skills': ['communication'],
+        'skills': ['software engineering'],
         'rubric': [
             {'text': 'Situation: Describes a code review or feedback about a programming task.', 'keywords': ['situation', 'example']},
             {'text': 'Task: Explains what needed to be improved in the code.', 'keywords': ['task', 'responsibility']},
@@ -221,7 +221,7 @@ BEHAVIORAL_QUESTIONS = [
         'question_type': 'Behavioral',
         'prompt': 'Describe a time you disagreed with a teammate about a project decision.',
         'expected_keywords': ['situation', 'example', 'task', 'responsibility', 'action', 'steps', 'result', 'outcome'],
-        'skills': ['conflict resolution'],
+        'skills': ['conflict resolution', 'teamwork'],
         'rubric': [
             {'text': 'Situation: Describes a disagreement about a specific project decision.', 'keywords': ['situation', 'example']},
             {'text': 'Task: Explains the need to reach a workable team decision.', 'keywords': ['task', 'responsibility']},
@@ -235,7 +235,7 @@ BEHAVIORAL_QUESTIONS = [
         'question_type': 'Behavioral',
         'prompt': 'Tell me about a time you had to learn a new programming tool quickly.',
         'expected_keywords': ['situation', 'example', 'task', 'responsibility', 'action', 'steps', 'result', 'outcome'],
-        'skills': ['problem solving'],
+        'skills': ['software engineering'],
         'rubric': [
             {'text': 'Situation: Describes a project that required an unfamiliar programming tool.', 'keywords': ['situation', 'example']},
             {'text': 'Task: Explains why learning the tool was necessary.', 'keywords': ['task', 'responsibility']},
@@ -263,7 +263,7 @@ BEHAVIORAL_QUESTIONS = [
         'question_type': 'Behavioral',
         'prompt': 'Tell me about a time you used data to make a decision.',
         'expected_keywords': ['situation', 'example', 'task', 'responsibility', 'action', 'steps', 'result', 'outcome'],
-        'skills': ['problem solving'],
+        'skills': ['statistics', 'data visualization'],
         'rubric': [
             {'text': 'Situation: Describes a decision that required information or data.', 'keywords': ['situation', 'example']},
             {'text': 'Task: Explains what decision needed to be made.', 'keywords': ['task', 'responsibility']},
@@ -277,7 +277,7 @@ BEHAVIORAL_QUESTIONS = [
         'question_type': 'Behavioral',
         'prompt': 'Describe a time you found an error in a set of data.',
         'expected_keywords': ['situation', 'example', 'task', 'responsibility', 'action', 'steps', 'result', 'outcome'],
-        'skills': ['problem solving'],
+        'skills': ['data cleaning'],
         'rubric': [
             {'text': 'Situation: Describes a dataset containing an error or inconsistency.', 'keywords': ['situation', 'example']},
             {'text': 'Task: Explains why the data error needed correction.', 'keywords': ['task', 'responsibility']},
@@ -305,7 +305,7 @@ BEHAVIORAL_QUESTIONS = [
         'question_type': 'Behavioral',
         'prompt': 'Describe a time you worked with others to complete a research or data project.',
         'expected_keywords': ['situation', 'example', 'task', 'responsibility', 'action', 'steps', 'result', 'outcome'],
-        'skills': ['teamwork'],
+        'skills': ['statistics'],
         'rubric': [
             {'text': 'Situation: Describes a research or data project completed with others.', 'keywords': ['situation', 'example']},
             {'text': 'Task: Explains the shared project goal and individual role.', 'keywords': ['task', 'responsibility']},
@@ -319,7 +319,7 @@ BEHAVIORAL_QUESTIONS = [
         'question_type': 'Behavioral',
         'prompt': 'Tell me about a time your findings were different from what you expected.',
         'expected_keywords': ['situation', 'example', 'task', 'responsibility', 'action', 'steps', 'result', 'outcome'],
-        'skills': ['problem solving'],
+        'skills': ['statistics'],
         'rubric': [
             {'text': 'Situation: Describes an analysis with an unexpected finding.', 'keywords': ['situation', 'example']},
             {'text': 'Task: Explains the need to understand or verify the finding.', 'keywords': ['task', 'responsibility']},
@@ -333,7 +333,7 @@ BEHAVIORAL_QUESTIONS = [
         'question_type': 'Behavioral',
         'prompt': 'Describe a time you had to organize messy information.',
         'expected_keywords': ['situation', 'example', 'task', 'responsibility', 'action', 'steps', 'result', 'outcome'],
-        'skills': ['problem solving'],
+        'skills': ['data cleaning'],
         'rubric': [
             {'text': 'Situation: Describes messy or inconsistent information.', 'keywords': ['situation', 'example']},
             {'text': 'Task: Explains how the information needed to be prepared.', 'keywords': ['task', 'responsibility']},
