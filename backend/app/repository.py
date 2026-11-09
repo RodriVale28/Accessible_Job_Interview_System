@@ -524,7 +524,7 @@ def list_sessions(user_id, limit=20) -> list:
                     """
                     SELECT s.id, s.job_title, s.difficulty, s.duration_min, s.status,
                            s.overall_score, s.started_at, s.completed_at,
-                           s.role_id, r.name AS role_name, s.interview_type
+                           s.role_id, r.name AS role_name, s.interview_type, s.timed
                     FROM sessions AS s
                     LEFT JOIN roles AS r ON r.id = s.role_id
                     WHERE s.user_id = %s
@@ -965,7 +965,7 @@ class MemoryRepository:
         mine = [s for s in self.sessions.values() if s["user_id"] == str(user_id)]
         mine.sort(key=lambda s: (s["started_at"], s["id"]), reverse=True)
         keys = ("id", "job_title", "difficulty", "duration_min", "status",
-                "overall_score", "started_at", "completed_at", "role_id", "interview_type")
+                "overall_score", "started_at", "completed_at", "role_id", "interview_type", "timed")
         return [{**{k: s[k] for k in keys},
                  "role_name": self.roles[s["role_id"]]["name"] if s["role_id"] else None}
                 for s in mine[:limit]]

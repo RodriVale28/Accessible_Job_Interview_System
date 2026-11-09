@@ -244,3 +244,26 @@ def test_improvements_capped_at_two_without_skips():
     result = session_feedback(grades, ["one", "two", "three", "four"])
 
     assert result["improvements"].count("Work on these areas") == 2
+
+
+def test_behavioral_strengths_name_star_parts_without_repeating_the_answer():
+    grade = FakeGradeResult(
+        score=100,
+        correct=True,
+        criteria_met=["Situation: Describes the problem.", "Task: Explains the goal.",
+                      "Action: Describes the steps.", "Result: Explains the outcome."],
+        evidence=["I listened, then walked them through each charge", "walked them through each charge"],
+    )
+
+    result = feedback_for_answer(grade, "I listened, then walked them through each charge.")
+
+    assert result["strengths"] == "Your answer covered the Situation, Task, Action and Result."
+
+
+def test_evidence_inside_a_longer_quote_is_not_repeated():
+    grade = FakeGradeResult(score=90, correct=True, criteria_met=["Explains linked lists"],
+                            evidence=["nodes and pointers link items", "nodes and pointers"])
+
+    result = feedback_for_answer(grade, "Nodes and pointers link items.")
+
+    assert result["strengths"].count("nodes and pointers") == 1

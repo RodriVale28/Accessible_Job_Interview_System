@@ -94,6 +94,7 @@ export type SessionSummary = {
   completed_at: string | null;
   role_name: string | null; // S2-1.3
   interview_type: InterviewType; // S2-1.3
+  timed: boolean;
 };
 
 

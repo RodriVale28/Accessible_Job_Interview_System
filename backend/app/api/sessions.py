@@ -181,6 +181,7 @@ class SessionSummary(BaseModel):
     completed_at: Optional[datetime] = None
     role_name: Optional[str] = None  # S2-1.3
     interview_type: str = "Technical"  # S2-1.3
+    timed: bool = False
 
 
 @router.get("/sessions", response_model=list[SessionSummary], summary="List the user's past interviews")

@@ -20,7 +20,7 @@ BEHAVIORAL_QUESTIONS = [
         ],
     },
     {
-        'category': 'Customer Service',
+        'category': 'Communication',
         'difficulty': 'Medium',
         'question_type': 'Behavioral',
         'prompt': 'Tell me about a time you explained a confusing policy to a customer.',
@@ -34,7 +34,7 @@ BEHAVIORAL_QUESTIONS = [
         ],
     },
     {
-        'category': 'Customer Service',
+        'category': 'Teamwork',
         'difficulty': 'Medium',
         'question_type': 'Behavioral',
         'prompt': 'Describe a time you worked with coworkers during a busy shift.',
@@ -48,7 +48,7 @@ BEHAVIORAL_QUESTIONS = [
         ],
     },
     {
-        'category': 'Customer Service',
+        'category': 'Conflict Resolution',
         'difficulty': 'Medium',
         'question_type': 'Behavioral',
         'prompt': 'Tell me about a time you handled a disagreement with a customer.',
@@ -76,7 +76,7 @@ BEHAVIORAL_QUESTIONS = [
         ],
     },
     {
-        'category': 'Customer Service',
+        'category': 'Problem Solving',
         'difficulty': 'Medium',
         'question_type': 'Behavioral',
         'prompt': 'Tell me about a time you made a mistake while helping a customer.',
@@ -90,7 +90,7 @@ BEHAVIORAL_QUESTIONS = [
         ],
     },
     {
-        'category': 'IT Support',
+        'category': 'Troubleshooting',
         'difficulty': 'Medium',
         'question_type': 'Behavioral',
         'prompt': 'Tell me about a time you helped someone solve a computer problem.',
@@ -104,7 +104,7 @@ BEHAVIORAL_QUESTIONS = [
         ],
     },
     {
-        'category': 'IT Support',
+        'category': 'Communication',
         'difficulty': 'Medium',
         'question_type': 'Behavioral',
         'prompt': 'Describe a time you explained a technical problem to someone without a technical background.',
@@ -118,7 +118,7 @@ BEHAVIORAL_QUESTIONS = [
         ],
     },
     {
-        'category': 'IT Support',
+        'category': 'Problem Solving',
         'difficulty': 'Medium',
         'question_type': 'Behavioral',
         'prompt': 'Tell me about a time you had to solve a technical problem under pressure.',
@@ -132,7 +132,7 @@ BEHAVIORAL_QUESTIONS = [
         ],
     },
     {
-        'category': 'IT Support',
+        'category': 'Teamwork',
         'difficulty': 'Medium',
         'question_type': 'Behavioral',
         'prompt': 'Describe a time you worked with another person to fix a technical issue.',
@@ -146,7 +146,7 @@ BEHAVIORAL_QUESTIONS = [
         ],
     },
     {
-        'category': 'IT Support',
+        'category': 'Troubleshooting',
         'difficulty': 'Medium',
         'question_type': 'Behavioral',
         'prompt': 'Tell me about a time your first attempt to fix a problem did not work.',
@@ -160,7 +160,7 @@ BEHAVIORAL_QUESTIONS = [
         ],
     },
     {
-        'category': 'IT Support',
+        'category': 'Customer Service',
         'difficulty': 'Medium',
         'question_type': 'Behavioral',
         'prompt': 'Describe a time you helped a frustrated person with a technology issue.',
@@ -174,7 +174,7 @@ BEHAVIORAL_QUESTIONS = [
         ],
     },
     {
-        'category': 'Software Engineering',
+        'category': 'Teamwork',
         'difficulty': 'Medium',
         'question_type': 'Behavioral',
         'prompt': 'Tell me about a time you worked with a team on a programming project.',
@@ -188,7 +188,7 @@ BEHAVIORAL_QUESTIONS = [
         ],
     },
     {
-        'category': 'Software Engineering',
+        'category': 'Problem Solving',
         'difficulty': 'Medium',
         'question_type': 'Behavioral',
         'prompt': 'Describe a time you found and fixed a difficult bug.',
@@ -202,7 +202,7 @@ BEHAVIORAL_QUESTIONS = [
         ],
     },
     {
-        'category': 'Software Engineering',
+        'category': 'Communication',
         'difficulty': 'Medium',
         'question_type': 'Behavioral',
         'prompt': 'Tell me about a time you received feedback on your code.',
@@ -216,7 +216,7 @@ BEHAVIORAL_QUESTIONS = [
         ],
     },
     {
-        'category': 'Software Engineering',
+        'category': 'Conflict Resolution',
         'difficulty': 'Medium',
         'question_type': 'Behavioral',
         'prompt': 'Describe a time you disagreed with a teammate about a project decision.',
@@ -230,7 +230,7 @@ BEHAVIORAL_QUESTIONS = [
         ],
     },
     {
-        'category': 'Software Engineering',
+        'category': 'Problem Solving',
         'difficulty': 'Medium',
         'question_type': 'Behavioral',
         'prompt': 'Tell me about a time you had to learn a new programming tool quickly.',
@@ -244,7 +244,7 @@ BEHAVIORAL_QUESTIONS = [
         ],
     },
     {
-        'category': 'Software Engineering',
+        'category': 'Teamwork',
         'difficulty': 'Medium',
         'question_type': 'Behavioral',
         'prompt': 'Describe a time you had to finish a coding task before a deadline.',
@@ -258,7 +258,7 @@ BEHAVIORAL_QUESTIONS = [
         ],
     },
     {
-        'category': 'Data Analyst',
+        'category': 'Problem Solving',
         'difficulty': 'Medium',
         'question_type': 'Behavioral',
         'prompt': 'Tell me about a time you used data to make a decision.',
@@ -272,7 +272,7 @@ BEHAVIORAL_QUESTIONS = [
         ],
     },
     {
-        'category': 'Data Analyst',
+        'category': 'Problem Solving',
         'difficulty': 'Medium',
         'question_type': 'Behavioral',
         'prompt': 'Describe a time you found an error in a set of data.',
@@ -286,7 +286,7 @@ BEHAVIORAL_QUESTIONS = [
         ],
     },
     {
-        'category': 'Data Analyst',
+        'category': 'Communication',
         'difficulty': 'Medium',
         'question_type': 'Behavioral',
         'prompt': 'Tell me about a time you explained information or results to another person.',
@@ -300,7 +300,7 @@ BEHAVIORAL_QUESTIONS = [
         ],
     },
     {
-        'category': 'Data Analyst',
+        'category': 'Teamwork',
         'difficulty': 'Medium',
         'question_type': 'Behavioral',
         'prompt': 'Describe a time you worked with others to complete a research or data project.',
@@ -314,7 +314,7 @@ BEHAVIORAL_QUESTIONS = [
         ],
     },
     {
-        'category': 'Data Analyst',
+        'category': 'Problem Solving',
         'difficulty': 'Medium',
         'question_type': 'Behavioral',
         'prompt': 'Tell me about a time your findings were different from what you expected.',
@@ -328,7 +328,7 @@ BEHAVIORAL_QUESTIONS = [
         ],
     },
     {
-        'category': 'Data Analyst',
+        'category': 'Problem Solving',
         'difficulty': 'Medium',
         'question_type': 'Behavioral',
         'prompt': 'Describe a time you had to organize messy information.',

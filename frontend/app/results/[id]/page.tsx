@@ -57,7 +57,7 @@ function getStarRows(a: AnswerResult) {
 
     return {
       label,
-      criterion: metIndex >= 0 ? met[metIndex] : missedCriterion,
+      criterion: (metIndex >= 0 ? met[metIndex] : missedCriterion)?.trim().slice(prefix.length).trim(),
       covered: metIndex >= 0,
       evidence: metIndex >= 0 ? evidence[metIndex] : undefined,
     };
@@ -434,7 +434,7 @@ export default function ResultsPage() {
 
             <p className="muted">
               {results.job_title} · {results.interview_type} ·{' '}
-              {results.difficulty} · {results.duration_min} min
+              {results.difficulty} · {results.timed ? `${results.duration_min} min` : 'Untimed'}
             </p>
 
             <p className="muted">
