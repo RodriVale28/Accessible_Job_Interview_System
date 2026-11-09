@@ -5,6 +5,7 @@ BLANK_STRENGTH = ""  # skips never appear under strengths
 MAX_IMPROVEMENTS = 2
 BLANK_IMPROVEMENT = "You skipped this one, so it is one to work on."
 BLANK_TIP = "Answer the question directly to receive feedback."
+STAR_PARTS = ("Situation", "Task", "Action", "Result")
 
 
 def _is_blank(answer_text):
@@ -90,7 +91,19 @@ def feedback_for_answer(grade, answer_text) -> dict:
         if (text := _criterion_text(item))
     ]
 
-    if evidence_points:
+    # A quote inside a longer quote would repeat words back to the user.
+    evidence_points = [
+        p for p in evidence_points
+        if not any(p != other and p in other for other in evidence_points)
+    ]
+    # Behavioral rubric lines start with "Situation:", "Task:"...; name the
+    # parts covered instead of quoting the user's own answer back at them.
+    star = [t.split(":", 1)[0] for t in met_points if t.split(":", 1)[0] in STAR_PARTS]
+
+    if star:
+        parts = star[0] if len(star) == 1 else ", ".join(star[:-1]) + " and " + star[-1]
+        strengths = f"Your answer covered the {parts}."
+    elif evidence_points:
         strengths = (
             "Your answer showed: "
             + "; ".join(evidence_points[:3])
