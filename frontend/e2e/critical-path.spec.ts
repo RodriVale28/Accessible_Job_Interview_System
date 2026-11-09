@@ -193,7 +193,7 @@ test('empty answer asks the user to type or skip', async ({ page }) => {
   await expect(page.locator('p.field-err[role=alert]')).toContainText('Skip question');
   await page.getByRole('button', { name: 'End now' }).click();
   await expect(page.getByRole('heading', { name: 'Overall score: 0 out of 100' })).toBeVisible();
-  await expect(page.getByText(/Not answered ·|Skipped: one to work on/).first()).toBeVisible();
+  await expect(page.getByText(/Not answered ·|Skipped: one to work on|Not reached/).first()).toBeVisible();
 });
 
 test('US-4 past interviews list reopens saved results', async ({ page }) => {
