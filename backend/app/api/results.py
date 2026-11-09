@@ -104,7 +104,12 @@ def _build(data: dict) -> ResultsOut:
     s, rows = data["session"], data["questions"]
     texts = [row["answer_text"] or "" for row in rows]
     grades = [_stored_grade(row) for row in rows]
-    fb = session_feedback(grades, texts)
+    # None marks a question that was not reached (no response row); "" is a skip.
+    fb = session_feedback(
+        grades,
+        [None if row["response_id"] is None else text for row, text in zip(rows, texts)],
+        not_started=max(0, s["total_questions"] - len(rows)),
+    )
 
     def saved(row, key, fallback):
         # Text saved with the answer wins; unanswered rows have none, so use the template.

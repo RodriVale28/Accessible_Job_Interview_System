@@ -6,7 +6,9 @@ from dataclasses import dataclass, field
 import pytest
 
 from app.evaluation.feedback_rules import (
+    _advice,
     feedback_for_answer,
+    next_step_line,
     session_feedback,
 )
 
@@ -139,7 +141,7 @@ def test_sprint2_criteria_feedback():
     result = feedback_for_answer(grade, "The concept is explained.")
 
     assert "Explains the basic concept" in result["strengths"]
-    assert "Provides a real-world example" in result["improvements"]
+    assert result["improvements"] == "Provide a real-world example."
     assert set(result) == {"strengths", "improvements"}
 
 
@@ -158,9 +160,8 @@ def test_realistic_linked_list_criterion():
         grade, "A linked list stores connected nodes."
     )
 
-    assert "Try mentioning Explains that" not in result["improvements"]
-    assert ".." not in result["improvements"]
-    assert "Points to add:" in result["improvements"]
+    assert result["improvements"] == "Mention that a linked list is made of nodes connected by pointers."
+    assert "Explains" not in result["improvements"]
 
 
 def test_sprint2_blank_answer_scores_zero():
@@ -282,9 +283,46 @@ def test_missing_star_parts_are_named_not_quoted():
     assert result["improvements"] == "Add the Task and Result parts of STAR to your answer."
 
 
-def test_session_strengths_capped_at_two():
-    grades = [FakeScore([f"point {i}"], [], 100, True) for i in range(4)]
+def test_session_strengths_is_a_short_summary_not_a_quote():
+    grades = [FakeGradeResult(score=100, correct=True, criteria_met=["Explains a"], evidence=["I said a"]),
+              FakeGradeResult(score=100, correct=True, criteria_met=["Explains b"], evidence=["I said b"])]
 
-    result = session_feedback(grades, ["one", "two", "three", "four"])
+    result = session_feedback(grades, ["I said a", "I said b"])
 
-    assert result["strengths"].count("Your answer") == 2
+    assert result["strengths"].startswith("You made good points in 2 answers.")
+    assert "I said" not in result["strengths"]
+    assert "Your answer" not in result["strengths"]
+
+
+def test_rubric_wording_becomes_advice():
+    grade = FakeGradeResult(
+        score=0,
+        criteria_missed=["Explains that a cache keeps hot data close.", "Names the main trade-offs",
+                         "Identifies the bottleneck", "Explains checking the logs"],
+    )
+
+    result = feedback_for_answer(grade, "something")
+
+    assert result["improvements"] == "Mention that a cache keeps hot data close. Name the main trade-offs."
+    assert _advice("Identifies the bottleneck") == "Identify the bottleneck"
+    assert _advice("Explains checking the logs") == "Explain checking the logs"
+    assert _advice("join") == "join"
+
+
+def test_not_reached_is_not_a_skip():
+    grades = [FakeScore([], ["a"], 0, False) for _ in range(3)]
+
+    result = session_feedback(grades, ["one", "", None], not_started=2)
+
+    assert [a["status"] for a in result["answers"]] == ["incorrect", "blank", "not_reached"]
+    assert result["unanswered_count"] == 1
+    assert result["not_reached_count"] == 3
+    assert "skip" not in result["answers"][2]["improvements"].lower()
+    assert result["improvements"].endswith(
+        "You skipped 1 question and did not reach 3 more, so those are the ones to work on next.")
+
+
+def test_next_step_line_wording():
+    assert next_step_line(0, 1) == "1 question was not reached before the interview ended, so that is the one to work on next."
+    assert next_step_line(0, 2) == "2 questions were not reached before the interview ended, so those are the ones to work on next."
+    assert next_step_line(1, 0) == "You skipped 1 question, so that is the one to work on next."
