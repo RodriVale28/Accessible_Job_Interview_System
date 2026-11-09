@@ -64,6 +64,19 @@ function getStarRows(a: AnswerResult) {
   });
 }
 
+// Rubric lines are written for graders ("Explains that ..."); show them as advice.
+const RUBRIC_VERB = /^(Explains|States|Notes|Mentions|Names|Describes|Gives|Recommends|Connects|Provides|Includes|Identifies|Defines|Shows|Says|Uses|Lists) (?=\S)/;
+
+function asAdvice(criterion: string): string {
+  const text = criterion.trim();
+  const m = RUBRIC_VERB.exec(text);
+  if (!m) return text;
+  const rest = text.slice(m[0].length);
+  if (rest.startsWith('that ')) return `Mention ${rest}`;
+  const verb = m[1].endsWith('ies') ? `${m[1].slice(0, -3)}y` : m[1].slice(0, -1);
+  return `${verb} ${rest}`;
+}
+
 function getKeyPointCounts(answers: AnswerResult[]) {
   return answers.reduce(
     (counts, answer) => {
@@ -93,6 +106,7 @@ function getKeyPointCounts(answers: AnswerResult[]) {
 
 function AnswerFeedback({ answer }: { answer: AnswerResult }) {
   const answered = answer.status === 'answered';
+  const skipped = answer.status === 'blank';
   const level = scoreLabel(answer.score);
   const met = answer.criteria_met ?? [];
   const missed = answer.criteria_missed ?? [];
@@ -111,7 +125,7 @@ function AnswerFeedback({ answer }: { answer: AnswerResult }) {
 
         <div className="grow">
           <div className="hd">
-            {answered ? `${answer.score}/100` : 'Skipped'} ·{' '}
+            {answered ? `${answer.score}/100` : skipped ? 'Skipped' : 'Not reached'} ·{' '}
             {answer.category}
           </div>
 
@@ -124,7 +138,7 @@ function AnswerFeedback({ answer }: { answer: AnswerResult }) {
         </div>
 
         <span className={answered ? pillClass(level) : 'pill'}>
-          {answered ? level : 'Skipped: one to work on'}
+          {answered ? level : skipped ? 'Skipped: one to work on' : 'Not reached'}
         </span>
       </div>
 
@@ -134,9 +148,9 @@ function AnswerFeedback({ answer }: { answer: AnswerResult }) {
         </blockquote>
       ) : (
         <p className="muted">
-          {answer.status === 'blank'
-            ? "You skipped this question. That's okay — you can try it again next time."
-            : "This question wasn't reached. You can work on it in another practice session."}
+          {skipped
+            ? "You skipped this question. That's okay, you can try it again next time."
+            : 'The interview ended before this question. You can work on it in another practice session.'}
         </p>
       )}
 
@@ -207,12 +221,12 @@ function AnswerFeedback({ answer }: { answer: AnswerResult }) {
           {missed.length > 0 && (
             <div>
               <p>
-                <b>Next time, try mentioning:</b>
+                <b>Next time, try to:</b>
               </p>
               <ul>
                 {missed.map((criterion, index) => (
                   <li key={`${criterion}-${index}`}>
-                    {criterion}
+                    {asAdvice(criterion)}
                   </li>
                 ))}
               </ul>
@@ -279,6 +293,9 @@ export default function ResultsPage() {
   const [retrying, setRetrying] = useState(false);
   const [retryError, setRetryError] = useState('');
 
+  // Move focus to the page heading once the results are on screen.
+  const titleRef = useRef<HTMLHeadingElement>(null);
+
   // Only the latest request may update state.
   const requestRef = useRef(0);
 
@@ -316,6 +333,11 @@ export default function ResultsPage() {
       requests.current++;
     };
   }, [id, loadResults]);
+
+  const showingResults = !loading && !error && !!results;
+  useEffect(() => {
+    if (showingResults) titleRef.current?.focus();
+  }, [showingResults]);
 
   function retry() {
     setLoading(true);
@@ -400,7 +422,10 @@ export default function ResultsPage() {
 
   const overallLabel = scoreLabel(score);
   const answers = results.answers ?? [];
-  const notReached = Math.max(0, results.total - answers.length);
+  // Three states: answered, skipped (the user chose Skip) and not reached (the interview ended first).
+  const skipped = answers.filter((a) => a.status === 'blank').length;
+  const notReached = Math.max(0, results.total - results.answered_count - skipped);
+  const neverShown = Math.max(0, results.total - answers.length);
   const keyPoints = getKeyPointCounts(answers);
 
   return (
@@ -413,19 +438,17 @@ export default function ResultsPage() {
       <div className="panel pad">
         <div className="report-hero">
           <div>
-            <h1 id="results-title" className="report-title">
-              {overallLabel}
+            <h1
+              id="results-title"
+              className="report-title"
+              ref={titleRef}
+              tabIndex={-1}
+            >
+              Interview results
             </h1>
 
             <p>
-              {results.strengths ||
-                'You completed a practice session. Keep building on what you learned.'}
-            </p>
-
-            <p>
-              <b>
-                Key points covered: {keyPoints.covered} of {keyPoints.total}
-              </b>
+              <span className={pillClass(overallLabel)}>{overallLabel}</span>
             </p>
 
             <h2 className="muted">
@@ -438,9 +461,14 @@ export default function ResultsPage() {
             </p>
 
             <p className="muted">
-              {results.answered_count} answered · {results.missed_count}{' '}
-              skipped or not answered
+              {results.answered_count} answered · {skipped} skipped · {notReached} not reached
             </p>
+
+            {keyPoints.total > 0 && (
+              <p className="muted">
+                Key points covered in the questions you answered: {keyPoints.covered} of {keyPoints.total}
+              </p>
+            )}
           </div>
         </div>
 
@@ -503,7 +531,9 @@ export default function ResultsPage() {
         {notReached > 0 && (
           <p className="muted" style={{ marginTop: 12 }}>
             {notReached} {notReached === 1 ? 'question was' : 'questions were'} not reached before the interview
-            ended. They count as 0 in the overall score.
+            ended. {notReached === 1 ? 'It counts' : 'They count'} as 0 in the overall score.
+            {neverShown > 0 &&
+              ` ${neverShown === notReached ? (neverShown === 1 ? 'It is' : 'They are') : `${neverShown} of them ${neverShown === 1 ? 'is' : 'are'}`} not listed above because ${neverShown === 1 ? 'it was' : 'they were'} never shown.`}
           </p>
         )}
 

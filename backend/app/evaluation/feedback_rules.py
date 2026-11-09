@@ -5,6 +5,7 @@ BLANK_STRENGTH = ""  # skips never appear under strengths
 MAX_IMPROVEMENTS = 2
 BLANK_IMPROVEMENT = "You skipped this one, so it is one to work on."
 BLANK_TIP = "Answer the question directly to receive feedback."
+NOT_REACHED_IMPROVEMENT = "The interview ended before this one, so it is one to work on."
 STAR_PARTS = ("Situation", "Task", "Action", "Result")
 
 
@@ -46,6 +47,39 @@ def _evidence_text(item):
             )
         return _clean_text(value)
     return _clean_text(item)
+
+
+# Rubric lines are written for graders ("Explains that ..."). Turn them into advice.
+_RUBRIC_VERBS = {
+    "Explains", "States", "Notes", "Mentions", "Names", "Describes", "Gives", "Recommends",
+    "Connects", "Provides", "Includes", "Identifies", "Defines", "Shows", "Says", "Uses", "Lists",
+}
+
+
+def _advice(point):
+    """'Explains that X' -> 'Mention that X'; 'Names the Y' -> 'Name the Y'; anything else unchanged."""
+    verb, _, rest = point.partition(" ")
+    if verb not in _RUBRIC_VERBS or not rest:
+        return point
+    if rest.startswith("that "):
+        return "Mention " + rest
+    return (verb[:-3] + "y" if verb.endswith("ies") else verb[:-1]) + " " + rest
+
+
+def _count(n, noun="question"):
+    return f"{n} {noun}" + ("" if n == 1 else "s")
+
+
+def next_step_line(skipped, not_reached):
+    """One line for the questions that were skipped (user chose Skip) and/or not reached."""
+    those = "that is the one" if skipped + not_reached == 1 else "those are the ones"
+    tail = f"so {those} to work on next."
+    if skipped and not_reached:
+        return f"You skipped {_count(skipped)} and did not reach {not_reached} more, {tail}"
+    if skipped:
+        return f"You skipped {_count(skipped)}, {tail}"
+    verb = "was" if not_reached == 1 else "were"
+    return f"{_count(not_reached)} {verb} not reached before the interview ended, {tail}"
 
 
 def _and(words):
@@ -135,11 +169,12 @@ def feedback_for_answer(grade, answer_text) -> dict:
             + " of STAR to your answer."
         )
     elif missed_points:
-        improvements = (
-            "Points to add: "
-            + "; ".join(missed_points[:2])
-            + "."
-        )
+        top = missed_points[:2]
+        advice = [_advice(p) for p in top]
+        if advice != top:
+            improvements = " ".join(a + "." for a in advice)
+        else:  # plain keywords, not sentences
+            improvements = "Points to add: " + "; ".join(top) + "."
     else:
         improvements = "Keep supporting your answers with clear examples."
 
@@ -149,12 +184,16 @@ def feedback_for_answer(grade, answer_text) -> dict:
     }
 
 
-def session_feedback(answer_scores, answers=None) -> dict:
-    """Summarize feedback across an interview session."""
+def session_feedback(answer_scores, answers=None, not_started=0) -> dict:
+    """Summarize feedback across an interview session.
+
+    An answer of "" is a skip; None means the question was not reached (the interview
+    ended first). not_started counts questions that were never even shown.
+    """
     answer_scores = list(answer_scores)
 
     if answers is None:
-        answers = [None] * len(answer_scores)
+        answers = [""] * len(answer_scores)
     else:
         answers = list(answers)
         if len(answers) != len(answer_scores):
@@ -167,6 +206,7 @@ def session_feedback(answer_scores, answers=None) -> dict:
     for grade, answer in zip(answer_scores, answers):
         fb = feedback_for_answer(grade, answer)
         blank = _is_blank(answer)
+        reached = answer is not None
 
         matched = _grade_items(grade, "criteria_met", "matched")
         missing = _grade_items(grade, "criteria_missed", "missing")
@@ -174,7 +214,9 @@ def session_feedback(answer_scores, answers=None) -> dict:
         score = 0 if blank else getattr(grade, "score", 0)
         correct = False if blank else getattr(grade, "correct", False)
 
-        if blank:
+        if not reached:
+            status = "not_reached"
+        elif blank:
             status = "blank"
         elif correct:
             status = "correct"
@@ -182,6 +224,9 @@ def session_feedback(answer_scores, answers=None) -> dict:
             status = "partial"
         else:
             status = "incorrect"
+
+        if not reached:
+            fb = {"strengths": BLANK_STRENGTH, "improvements": NOT_REACHED_IMPROVEMENT}
 
         results.append({
             "score": score,
@@ -205,6 +250,7 @@ def session_feedback(answer_scores, answers=None) -> dict:
             "correct_count": 0,
             "total": 0,
             "unanswered_count": 0,
+            "not_reached_count": not_started,
             "strengths": "No answers were evaluated.",
             "improvements": "Complete an answer to receive feedback.",
             "answers": [],
@@ -221,29 +267,19 @@ def session_feedback(answer_scores, answers=None) -> dict:
     unanswered_count = sum(
         1 for item in results if item["status"] == "blank"
     )
+    not_reached_count = not_started + sum(
+        1 for item in results if item["status"] == "not_reached"
+    )
 
-    strengths = [
-        item["strengths"]
-        for item in results
-        if item["status"] != "blank" and item["matched"]
-    ]
+    # Skips and unreached questions have no feedback of their own.
+    graded = [i for i in results if i["status"] not in ("blank", "not_reached")]
+    improvements = [i["improvements"] for i in graded if i["missing"]]
+    good = sum(1 for i in graded if i["matched"])
 
-    improvements = [
-        item["improvements"]
-        for item in results
-        if item["status"] != "blank" and item["missing"]
-    ]
-
-    if unanswered_count:
-        question_word = (
-            "question" if unanswered_count == 1 else "questions"
-        )
+    if unanswered_count or not_reached_count:
         # The skip line always shows, so it takes one of the 2 improvement slots.
         improvements = improvements[:MAX_IMPROVEMENTS - 1]
-        improvements.append(
-            f"You skipped {unanswered_count} {question_word}, "
-            "so those are the ones to work on next."
-        )
+        improvements.append(next_step_line(unanswered_count, not_reached_count))
     else:
         improvements = improvements[:MAX_IMPROVEMENTS]
 
@@ -252,9 +288,12 @@ def session_feedback(answer_scores, answers=None) -> dict:
         "correct_count": correct_count,
         "total": len(results),
         "unanswered_count": unanswered_count,
+        "not_reached_count": not_reached_count,
+        # A short summary only: the specific detail lives under each question.
         "strengths": (
-            " ".join(strengths[:MAX_IMPROVEMENTS])
-            if strengths
+            f"You made good points in {_count(good, 'answer')}. "
+            "See each question below for what went well."
+            if good
             else "Keep practicing your answers."
         ),
         "improvements": (
