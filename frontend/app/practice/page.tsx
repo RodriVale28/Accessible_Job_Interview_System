@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useState, type FormEvent } from 'react';
+import { Suspense, useEffect, useRef, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { PastInterviews } from '@/components/PastInterviews';
 import ReadAloud from '@/components/ReadAloud';
@@ -28,6 +28,9 @@ function PracticeContent() {
   const [result, setResult] = useState<PracticeResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const feedbackRef = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => { if (result) feedbackRef.current?.focus(); }, [result]);
 
   useEffect(() => { getRoles().then(setRoles).catch(() => setRoles([])); }, []);
 
@@ -110,7 +113,7 @@ function PracticeContent() {
             </form>
           ) : (
             <section className="practice-result" aria-labelledby="feedback-title">
-              <h2 id="feedback-title">{labelFor(result.score)}</h2>
+              <h2 id="feedback-title" ref={feedbackRef} tabIndex={-1}>{labelFor(result.score)}</h2>
               {result.grader === 'keyword' && <p className="muted">Basic grading was used for this answer.</p>}
               <p><b>What went well:</b> {result.strengths}</p>
               <p><b>Next step:</b> {result.improvements}</p>

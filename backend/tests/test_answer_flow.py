@@ -425,3 +425,21 @@ def test_no_remaining_question_returns_terminal_answer_response(
     assert response.json()["completed"] is True
     assert response.json()["question"] is None
     assert set(repo.get_responses(session["session_id"])) == {qid}
+
+
+def test_failed_next_question_is_asked_on_reload(client, user, start, repo, monkeypatch):
+    """The answer saved but asking the next question failed: reloading asks it, not stuck."""
+    session = start()
+
+    def fail(*args, **kwargs):
+        raise PersistenceError("Unable to save. Please retry.")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(repo, "record_asked_question", fail)
+        assert submit(client, user, session).status_code == 503
+    assert len(repo.get_responses(session["session_id"])) == 1
+
+    state = client.get(f"/api/sessions/{session['session_id']}", headers=user).json()
+    assert state["question"] is not None
+    assert state["question"]["id"] != session["question"]["id"]
+    assert state["q_index"] == 2
