@@ -84,15 +84,6 @@ def test_sprint1_answers_fall_back_to_keywords(client, user, start, repo):
     assert first["evidence"] == []
 
 
-def test_skip_never_appears_in_strengths(client, user, start):
-    s = start()
-    answer(client, user, s["session_id"], s["question"], "")
-    body = client.post(f"/api/sessions/{s['session_id']}/complete", headers=user).json()
-    assert "skip" not in body["answers"][0]["strengths"].lower()
-    assert "skip" not in body["strengths"].lower()
-    assert "You skipped" in body["improvements"]  # the skip lives under improvements only
-
-
 def test_skipped_and_not_reached_are_kept_apart(client, user, start, repo):
     """Q1 answered, Q2 skipped, Q3 on screen when the interview ended, Q4 and Q5 never shown."""
     s = start()
@@ -107,3 +98,12 @@ def test_skipped_and_not_reached_are_kept_apart(client, user, start, repo):
     assert body["improvements"] == "You skipped 1 question and did not reach 3 more, so those are the ones to work on next."
     assert "skip" not in body["answers"][2]["improvements"].lower()
     assert "ended" in body["answers"][2]["improvements"]
+
+
+def test_skip_never_appears_in_strengths(client, user, start):
+    s = start()
+    answer(client, user, s["session_id"], s["question"], "")
+    body = client.post(f"/api/sessions/{s['session_id']}/complete", headers=user).json()
+    assert "skip" not in body["answers"][0]["strengths"].lower()
+    assert "skip" not in body["strengths"].lower()
+    assert "You skipped" in body["improvements"]  # the skip lives under improvements only
