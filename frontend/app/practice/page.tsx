@@ -1,12 +1,12 @@
 'use client';
 
-import { Suspense, useEffect, useState, type FormEvent } from 'react';
+import { Suspense, useEffect, useRef, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { PastInterviews } from '@/components/PastInterviews';
 import ReadAloud from '@/components/ReadAloud';
 import { useSearchParams } from 'next/navigation';
 import { getPracticeQuestion, getRoles, submitPracticeAnswer } from '@/lib/api';
-import type { Difficulty, InterviewType, PracticeResult, Question, Role } from '@/lib/types';
+import { DIFFICULTY_LABEL, type Difficulty, type InterviewType, type PracticeResult, type Question, type Role } from '@/lib/types';
 
 // Practice is one question, so Technical or Behavioral (Mixed is for full interviews).
 const TYPES: InterviewType[] = ['Technical', 'Behavioral'];
@@ -28,6 +28,9 @@ function PracticeContent() {
   const [result, setResult] = useState<PracticeResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const feedbackRef = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => { if (result) feedbackRef.current?.focus(); }, [result]);
 
   useEffect(() => { getRoles().then(setRoles).catch(() => setRoles([])); }, []);
 
@@ -90,7 +93,7 @@ function PracticeContent() {
           <div>
             <label className="glabel" htmlFor="practice-difficulty">Difficulty</label>
             <select id="practice-difficulty" value={difficulty} onChange={(e) => setDifficulty(e.target.value as Difficulty)}>
-              {(['Easy', 'Medium', 'Hard'] as Difficulty[]).map((value) => <option key={value}>{value}</option>)}
+              {(['Easy', 'Medium', 'Hard'] as Difficulty[]).map((value) => <option key={value} value={value}>{DIFFICULTY_LABEL[value]}</option>)}
             </select>
           </div>
           <button className="guide-btn" type="button" onClick={() => void chooseQuestion()} disabled={busy}>Choose question</button>
@@ -110,10 +113,10 @@ function PracticeContent() {
             </form>
           ) : (
             <section className="practice-result" aria-labelledby="feedback-title">
-              <h2 id="feedback-title">{labelFor(result.score)}</h2>
+              <h2 id="feedback-title" ref={feedbackRef} tabIndex={-1}>{labelFor(result.score)}</h2>
               {result.grader === 'keyword' && <p className="muted">Basic grading was used for this answer.</p>}
               <p><b>What went well:</b> {result.strengths}</p>
-              <p><b>Next time, try:</b> {result.improvements}</p>
+              <p><b>Next step:</b> {result.improvements}</p>
               {result.criteria_met.length > 0 && <div><h3>Key points covered</h3><ul>{result.criteria_met.map((item, i) => <li key={`${item}-${i}`}>{item}{result.evidence[i] ? <blockquote>{result.evidence[i]}</blockquote> : null}</li>)}</ul></div>}
               {result.criteria_missed.length > 0 && <div><h3>Ideas to add</h3><ul>{result.criteria_missed.map((item, i) => <li key={`${item}-${i}`}>{item}</li>)}</ul></div>}
             </section>

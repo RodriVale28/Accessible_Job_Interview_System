@@ -93,10 +93,11 @@ h1 em{font-style:italic;color:var(--amber)}
 /* panels + forms */
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:12px}
 .pad{padding:22px}
-input[type=text],textarea{width:100%;background:var(--surface-2);border:1px solid var(--line);border-radius:11px;
+input:not([type=checkbox]):not([type=radio]),select,textarea{width:100%;background:var(--surface-2);border:1px solid var(--line);border-radius:11px;
   padding:12px 13px;color:var(--ink);font-family:inherit;font-size:var(--fs-read)}
 textarea{resize:vertical}
-input:focus,textarea:focus{outline:none;border-color:var(--cyan)}
+input[type=checkbox]{width:1.25em;height:1.25em;accent-color:var(--cyan)}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--cyan)}
 input[aria-invalid="true"]{border-color:var(--bad)!important}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;border:none;border-radius:12px;
   padding:13px 20px;font-size:var(--fs-body);font-weight:700;text-decoration:none;min-height:46px}

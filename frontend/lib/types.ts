@@ -1,4 +1,6 @@
 export type Difficulty = 'Easy' | 'Medium' | 'Hard';
+// Names users see (same as the setup page buttons).
+export const DIFFICULTY_LABEL: Record<Difficulty, string> = { Easy: 'Warm-up', Medium: 'Standard', Hard: 'Challenge' };
 export type Duration = 15 | 30 | 45;
 
 // S2-1.3

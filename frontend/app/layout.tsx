@@ -10,7 +10,7 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: 'Interview Studio',
-  description: 'Accessible mock technical interviews with feedback you can act on.',
+  description: 'Accessible mock job interviews with feedback you can act on.',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -27,6 +27,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <Link href="/" className="brand"><span className="mark"><MarkIcon /></span>Interview Studio</Link>
               <div className="spacer" />
               <SettingsPanel />
+              <Link href="/practice" className="chip-btn">Practice</Link>
               <Link href="/setup" className="chip-btn">New interview</Link>
               <AccountMenu />
             </div>

@@ -48,6 +48,15 @@ def _evidence_text(item):
     return _clean_text(item)
 
 
+def _and(words):
+    """'Task' / 'Task and Result' / 'Situation, Task and Result'."""
+    return words[0] if len(words) == 1 else ", ".join(words[:-1]) + " and " + words[-1]
+
+
+def _star_parts(points):
+    return [t.split(":", 1)[0] for t in points if t.split(":", 1)[0] in STAR_PARTS]
+
+
 def _grade_items(grade, new_field, legacy_field):
     """Support Sprint 2 criteria and older keyword results."""
     items = getattr(grade, new_field, None)
@@ -98,11 +107,10 @@ def feedback_for_answer(grade, answer_text) -> dict:
     ]
     # Behavioral rubric lines start with "Situation:", "Task:"...; name the
     # parts covered instead of quoting the user's own answer back at them.
-    star = [t.split(":", 1)[0] for t in met_points if t.split(":", 1)[0] in STAR_PARTS]
+    star = _star_parts(met_points)
 
     if star:
-        parts = star[0] if len(star) == 1 else ", ".join(star[:-1]) + " and " + star[-1]
-        strengths = f"Your answer covered the {parts}."
+        strengths = f"Your answer covered the {_and(star)}."
     elif evidence_points:
         strengths = (
             "Your answer showed: "
@@ -118,9 +126,17 @@ def feedback_for_answer(grade, answer_text) -> dict:
     else:
         strengths = "Keep working on explaining your answer clearly."
 
-    if missed_points:
+    missed_star = _star_parts(missed_points)
+
+    if missed_star:
         improvements = (
-            "Work on these areas: "
+            f"Add the {_and(missed_star)} "
+            + ("part" if len(missed_star) == 1 else "parts")
+            + " of STAR to your answer."
+        )
+    elif missed_points:
+        improvements = (
+            "Points to add: "
             + "; ".join(missed_points[:2])
             + "."
         )
@@ -237,7 +253,7 @@ def session_feedback(answer_scores, answers=None) -> dict:
         "total": len(results),
         "unanswered_count": unanswered_count,
         "strengths": (
-            " ".join(strengths)
+            " ".join(strengths[:MAX_IMPROVEMENTS])
             if strengths
             else "Keep practicing your answers."
         ),

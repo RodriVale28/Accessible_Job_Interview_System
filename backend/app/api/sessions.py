@@ -18,7 +18,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.api.deps import expires_at, load_session, seconds_left, user_id
+from app.api.deps import expires_at, load_session, seconds_left, time_is_up, user_id
 from app.repository import QUESTION_COUNTS, PersistenceError, get_repo
 from app.services import question_service as qs
 
@@ -111,6 +111,16 @@ def _role_name(repo, s: dict) -> Optional[str]:
 
 def session_state(repo, s: dict) -> SessionState:
     current, q_index = qs.current_question(repo, s)
+    if (current is None and s["status"] == "in_progress"
+            and q_index < s["total_questions"] and not time_is_up(s)):
+        # The last answer saved but asking the next question failed (a 503): ask it now
+        # instead of leaving the interview stuck with nothing to answer.
+        try:
+            qs.next_question(s["id"], s["difficulty"], repo=repo, role_id=s.get("role_id"),
+                             interview_type=s.get("interview_type") or "Technical")
+            current, q_index = qs.current_question(repo, s)
+        except (qs.NoQuestionAvailable, PersistenceError):
+            pass
     return SessionState(
         session_id=s["id"], job_title=s["job_title"], interview_type=s["interview_type"],
         difficulty=s["difficulty"], duration_min=s["duration_min"], status=s["status"],

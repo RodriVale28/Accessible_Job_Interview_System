@@ -35,6 +35,7 @@ export default function SessionPage() {
   const logRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const finishing = useRef(false);
+  const draft = useRef<{ qid?: number; text: string }>({ text: '' });
 
   const finish = useCallback(async () => {
     if (finishing.current) return;
@@ -91,10 +92,18 @@ export default function SessionPage() {
     const t = window.setInterval(() => {
       const n = Date.now();
       setNow(n);
-      if (n >= deadline) { window.clearInterval(t); void finish(); }
+      if (n >= deadline) {
+        window.clearInterval(t);
+        // Save what was typed so the last answer is not lost (the server allows a short grace period).
+        const { qid, text } = draft.current;
+        const save = qid && text.trim() ? submitAnswer(id, qid, text.trim()).catch(() => undefined) : Promise.resolve();
+        void save.then(finish);
+      }
     }, 1000);
     return () => window.clearInterval(t);
-  }, [deadline, finish]);
+  }, [deadline, finish, id]);
+
+  useEffect(() => { draft.current = { qid: state?.question?.id, text: answer }; }, [state, answer]);
 
   // keep the newest message in view
   useEffect(() => {
@@ -132,6 +141,10 @@ export default function SessionPage() {
       // Time ran out (server side) or the interview was ended in another tab: go to results.
       if (e instanceof ApiError && e.status === 409 && /Time is up|already finished/.test(e.message)) {
         await finish();
+        return;
+      }
+      if (e instanceof ApiError && e.status === 409 && /not the current question/.test(e.message)) {
+        window.location.reload();
         return;
       }
       setMessages((m) => m.slice(0, -1));
@@ -228,7 +241,7 @@ export default function SessionPage() {
               <span className="spacer" />
               <Link className="guide-btn" href="/">Leave and resume later</Link>
               <button className="guide-btn" type="button" disabled={busy} onClick={() => void send('')}>Skip question</button>
-              <button className="guide-btn end" type="button" disabled={busy} onClick={() => void finish()}>End now</button>
+              <button className="guide-btn end" type="button" disabled={busy} onClick={() => { if (window.confirm('End the interview now? Questions you have not answered will count as 0.')) void finish(); }}>End now</button>
             </div>
             <div className="composer">
               <div className="inpwrap">
