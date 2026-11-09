@@ -138,3 +138,8 @@ def test_technical_interview_only_asks_role_skills_with_technical_questions():
         _, ids = run_interview(repo, 1, "Technical")
         for qid in ids:
             assert set(repo.questions[qid]["skills"]) <= role_technical_skills
+
+def test_role_stays_on_its_skills_when_a_level_runs_out(lib):
+    """Data Analyst has only 4 Medium technical questions: the rest come from its other levels, not other roles."""
+    _, ids = run_interview(lib, 2, "Technical")
+    assert all(set(lib.questions[i]["skills"]) <= {"sql", "statistics"} for i in ids)
