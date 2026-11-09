@@ -1,7 +1,7 @@
 // S1-0.1 / US-4: the signed-in user's saved interviews, so results can be reopened later.
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { discardSession, listSessions } from '../lib/api';
 import { supabase } from '../lib/supabase';
@@ -12,14 +12,22 @@ export function PastInterviews() {
   const [error, setError] = useState('');
   const [discardingId, setDiscardingId] = useState<number | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [notice, setNotice] = useState('');
+  const headingRef = useRef<HTMLHeadingElement>(null);
+
+  // The button that had focus is replaced or removed, so hand focus on explicitly.
+  const focusLater = (focus: () => HTMLElement | null | undefined) => requestAnimationFrame(() => focus()?.focus());
 
   async function confirmDiscard(sessionId: number) {
+    if (busyId !== null) return;
     setBusyId(sessionId);
     setError('');
     try {
       await discardSession(sessionId);
       setRows((current) => current?.filter((row) => row.session_id !== sessionId) ?? null);
       setDiscardingId(null);
+      setNotice('Interview discarded.');
+      focusLater(() => headingRef.current);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Could not discard this interview. Please try again.');
     } finally {
@@ -42,15 +50,16 @@ export function PastInterviews() {
     return () => { cancelled = true; };
   }, []);
 
-  if (error) return <p className="muted" role="status">{error}</p>;
-  if (!rows?.length) return null;
+  if (error && !rows) return <p className="muted" role="status">{error}</p>;
+  if (!rows?.length && !notice) return null;
 
   return (
     <section className="panel pad" aria-labelledby="past-title" style={{ marginTop: 28, textAlign: 'left' }}>
-      <h2 id="past-title" className="card-title">Your past interviews</h2>
+      <h2 id="past-title" ref={headingRef} tabIndex={-1} className="card-title">Your past interviews</h2>
       {error && <p className="alert" role="alert">{error}</p>}
+      <p role="status" className={notice ? 'muted' : 'sr-only'}>{notice}</p>
       <ul className="past-list">
-        {rows.map((s) => {
+        {rows?.map((s) => {
           const done = s.status === 'completed';
           const when = new Date(s.started_at).toLocaleDateString();
           return (
@@ -67,10 +76,18 @@ export function PastInterviews() {
                   {discardingId === s.session_id ? (
                     <div className="discard-confirm" role="group" aria-label={`Confirm discard of ${s.role_name || s.job_title} interview`}>
                       <span role="status">Discard this unfinished interview?</span>
-                      <button className="btn amber" type="button" onClick={() => void confirmDiscard(s.session_id)} disabled={busyId === s.session_id}>{busyId === s.session_id ? 'Discarding…' : 'Yes, discard'}</button>
-                      <button className="btn primary" type="button" onClick={() => setDiscardingId(null)} disabled={busyId === s.session_id}>Keep interview</button>
+                      <button className="btn amber" type="button" onClick={() => void confirmDiscard(s.session_id)} aria-disabled={busyId === s.session_id}>{busyId === s.session_id ? 'Discarding…' : 'Yes, discard'}</button>
+                      <button id={`keep-${s.session_id}`} className="btn primary" type="button" aria-disabled={busyId === s.session_id} onClick={() => {
+                        if (busyId !== null) return;
+                        setDiscardingId(null);
+                        focusLater(() => document.getElementById(`discard-${s.session_id}`));
+                      }}>Keep interview</button>
                     </div>
-                  ) : <button className="btn primary" type="button" onClick={() => setDiscardingId(s.session_id)}>Discard</button>}
+                  ) : <button id={`discard-${s.session_id}`} className="btn primary" type="button" onClick={() => {
+                    setDiscardingId(s.session_id);
+                    setNotice('');
+                    focusLater(() => document.getElementById(`keep-${s.session_id}`));
+                  }}>Discard</button>}
                 </>}
               </div>
             </li>

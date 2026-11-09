@@ -72,6 +72,9 @@ export default function SetupPage() {
   const difficultyRef = useRef<HTMLFieldSetElement>(null);
   const durationRef = useRef<HTMLFieldSetElement>(null);
   const expectHeadingRef = useRef<HTMLHeadingElement>(null);
+  const setupHeadingRef = useRef<HTMLHeadingElement>(null);
+  const backToSetup = useRef(false);
+  const submitting = useRef(false);
   const requestId = useRef(0);
 
   useEffect(() => {
@@ -98,6 +101,9 @@ export default function SetupPage() {
   useEffect(() => {
     if (stage === 'expect') {
       expectHeadingRef.current?.focus();
+    } else if (backToSetup.current) {
+      backToSetup.current = false; // the Back button is gone, so focus lands on the form heading
+      setupHeadingRef.current?.focus();
     }
   }, [stage]);
 
@@ -192,6 +198,17 @@ export default function SetupPage() {
 
   async function handleContinue(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    // A second click while the role lookup runs would restart it and make the first one see "no role".
+    if (submitting.current) return;
+    submitting.current = true;
+    try {
+      await continueToExpect();
+    } finally {
+      submitting.current = false;
+    }
+  }
+
+  async function continueToExpect() {
     setError('');
 
     // Wait for roles to load before deciding whether a role is required.
@@ -275,7 +292,12 @@ export default function SetupPage() {
       <div className="panel pad">
         {stage === 'setup' ? (
           <form onSubmit={handleContinue} noValidate>
-            <h1 id="setup-title" className="card-title">
+            <h1
+              id="setup-title"
+              ref={setupHeadingRef}
+              tabIndex={-1}
+              className="card-title"
+            >
               Interview setup
             </h1>
 
@@ -554,7 +576,7 @@ onBlur={() => {
             <button
               type="submit"
               className="btn amber full"
-                disabled={rolesLoading}
+              aria-disabled={rolesLoading}
             >
               {rolesLoading ? 'Loading roles…' : matching ? 'Matching your role…' : 'Continue'}
             </button>
@@ -610,14 +632,19 @@ onBlur={() => {
                 {error}
               </p>
             )}
+            <p role="status" className="sr-only">
+              {loading ? 'Starting your interview…' : ''}
+            </p>
 
             <div className="opt-group">
               <button
                 type="button"
                 className="btn"
-                disabled={loading}
+                aria-disabled={loading}
                 onClick={() => {
+                  if (loading) return;
                   setError('');
+                  backToSetup.current = true;
                   setStage('setup');
                 }}
               >
@@ -628,7 +655,7 @@ onBlur={() => {
             <button
               type="button"
               className="btn amber full"
-              disabled={loading}
+              aria-disabled={loading}
               onClick={() => {
                 void handleStart();
               }}

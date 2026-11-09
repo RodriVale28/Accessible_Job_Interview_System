@@ -101,10 +101,15 @@ let edits = 0; // a change made while the account copy loads wins over the loade
 export async function loadAccountSettings() {
   const before = edits;
   const saved = await account();
-  if (saved && edits === before) {
-    writeLocal(saved);
-    setCurrent(saved);
+  if (!saved || edits !== before) return;
+  // The server answers with defaults when nothing is saved yet. If this browser already has choices
+  // (made before logging in), keep them and save them to the account instead of overwriting them.
+  if (same(saved, DEFAULT_SETTINGS) && !same(current, DEFAULT_SETTINGS)) {
+    void account({ method: 'PUT', body: JSON.stringify(current) });
+    return;
   }
+  writeLocal(saved);
+  setCurrent(saved);
 }
 
 // Call once from a mounted component. Returns the cleanup function.

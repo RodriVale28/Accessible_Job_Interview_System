@@ -26,7 +26,7 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (res.status === 401 && loginRequired) {
     // not signed in, or the login expired: come back here after logging in
     // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- api() is not a component
-    window.location.assign(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+    window.location.assign(`/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`);
   }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {

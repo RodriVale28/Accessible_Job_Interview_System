@@ -1,6 +1,9 @@
 // Landing page. Links into setup, practice and past interviews.
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { PastInterviews } from '@/components/PastInterviews';
+
+export const metadata: Metadata = { title: 'Home · Interview Studio' };
 
 export default function Home() {
   return (
