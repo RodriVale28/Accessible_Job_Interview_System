@@ -26,25 +26,39 @@ function PracticeContent() {
   const [question, setQuestion] = useState<Question | null>(null);
   const [answer, setAnswer] = useState('');
   const [result, setResult] = useState<PracticeResult | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState(''); // what is loading right now; '' = idle
+  const busy = status !== '';
   const [error, setError] = useState('');
+  const [answerInvalid, setAnswerInvalid] = useState(false);
   const feedbackRef = useRef<HTMLHeadingElement>(null);
+  const questionRef = useRef<HTMLHeadingElement>(null);
+  const answerRef = useRef<HTMLTextAreaElement>(null);
+  const focusQuestion = useRef(false);
 
   useEffect(() => { if (result) feedbackRef.current?.focus(); }, [result]);
+
+  // a new question was asked for: focus it so it is read out (the button that was clicked just changed)
+  useEffect(() => {
+    if (question && focusQuestion.current) { focusQuestion.current = false; questionRef.current?.focus(); }
+  }, [question]);
 
   useEffect(() => { getRoles().then(setRoles).catch(() => setRoles([])); }, []);
 
   async function chooseQuestion(questionId?: number) {
-    setBusy(true);
+    if (busy) return;
+    setStatus('Loading a question…');
     setError('');
+    setAnswerInvalid(false);
     setResult(null);
     setAnswer('');
+    focusQuestion.current = true;
     try {
       const next = await getPracticeQuestion({ question_id: questionId, role_id: roleId ? Number(roleId) : undefined, interview_type: interviewType, difficulty });
       setQuestion(next);
     } catch (reason) {
+      focusQuestion.current = false;
       setError(reason instanceof Error ? reason.message : 'Could not load a question. Please try again.');
-    } finally { setBusy(false); }
+    } finally { setStatus(''); }
   }
 
   useEffect(() => {
@@ -59,15 +73,19 @@ function PracticeContent() {
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (busy) return;
     if (!question || !answer.trim()) {
       setError('Add an answer before checking it.');
+      setAnswerInvalid(true);
+      answerRef.current?.focus();
       return;
     }
-    setBusy(true);
+    setStatus('Checking your answer…');
     setError('');
+    setAnswerInvalid(false);
     try { setResult(await submitPracticeAnswer({ question_id: question.id, text: answer })); }
     catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not check your answer. Please try again.'); }
-    finally { setBusy(false); }
+    finally { setStatus(''); }
   }
 
   return (
@@ -96,20 +114,23 @@ function PracticeContent() {
               {(['Easy', 'Medium', 'Hard'] as Difficulty[]).map((value) => <option key={value} value={value}>{DIFFICULTY_LABEL[value]}</option>)}
             </select>
           </div>
-          <button className="guide-btn" type="button" onClick={() => void chooseQuestion()} disabled={busy}>Choose question</button>
+          <button className="guide-btn" type="button" onClick={() => void chooseQuestion()} aria-disabled={busy}>Choose question</button>
         </div>
 
-        {error && <p className="alert" role="alert">{error}</p>}
+        <p className="sr-only" role="status">{status}</p>
+        {error && <p className="alert" id="practice-error" role="alert">{error}</p>}
         {question && <article className="practice-question" aria-labelledby="question-title">
           <div className="practice-qhead">
-            <h2 id="question-title">{question.prompt}</h2>
+            <h2 id="question-title" ref={questionRef} tabIndex={-1}>{question.prompt}</h2>
             <ReadAloud text={question.prompt} label="Read question aloud" />
           </div>
           {!result ? (
             <form onSubmit={(e) => void submit(e)}>
               <label htmlFor="practice-answer" className="glabel">Your answer</label>
-              <textarea id="practice-answer" rows={6} maxLength={5000} value={answer} onChange={(e) => setAnswer(e.target.value)} />
-              <button type="submit" className="btn amber" disabled={busy}>{busy ? 'Checking…' : 'See feedback'}</button>
+              <textarea id="practice-answer" ref={answerRef} rows={6} maxLength={5000} value={answer}
+                aria-invalid={answerInvalid} aria-describedby={error ? 'practice-error' : undefined}
+                onChange={(e) => { setAnswer(e.target.value); setAnswerInvalid(false); }} />
+              <button type="submit" className="btn amber" aria-disabled={busy}>{busy ? 'Checking…' : 'See feedback'}</button>
             </form>
           ) : (
             <section className="practice-result" aria-labelledby="feedback-title">
@@ -123,8 +144,8 @@ function PracticeContent() {
           )}
         </article>}
         <div className="actions">
-          {result && <button className="btn amber" type="button" onClick={() => void chooseQuestion(question?.id)} disabled={busy}>Try again</button>}
-          <button className="btn primary" type="button" onClick={() => void chooseQuestion()} disabled={busy}>Another question</button>
+          {result && <button className="btn amber" type="button" onClick={() => void chooseQuestion(question?.id)} aria-disabled={busy}>Try again</button>}
+          <button className="btn primary" type="button" onClick={() => void chooseQuestion()} aria-disabled={busy}>Another question</button>
           <Link className="btn primary" href="/">Back to Interview Studio</Link>
         </div>
       </div>

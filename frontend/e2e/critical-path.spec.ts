@@ -100,7 +100,7 @@ async function startInterview(page: Page, opts: SetupOptions) {
     await page.getByRole('button', { name: 'Start interview' }).click();
   }
   await expect(page).toHaveURL(/\/session\/\d+/);
-  await expect(page.getByText(`Question 1 of ${QUESTIONS[opts.length ?? 'Short']}`)).toBeVisible();
+  await expect(page.locator('.qlabel', { hasText: `Question 1 of ${QUESTIONS[opts.length ?? 'Short']}` })).toBeVisible();
 }
 
 /** Check that an element's text and background are gray (no strong hue), e.g. a skipped answer. */
@@ -128,7 +128,7 @@ test('Sprint 1 critical path', async ({ page }) => {
 
   // US-2/US-3 answer one question at a time
   for (let i = 1; i <= 5; i++) {
-    await expect(page.getByText(`Question ${i} of 5`)).toBeVisible();
+    await expect(page.locator('.qlabel', { hasText: `Question ${i} of 5` })).toBeVisible();
     if (i === 3) {
       await page.getByRole('button', { name: 'Skip question' }).click();
     } else {
@@ -238,7 +238,7 @@ test('Sprint 2 demo path', async ({ page }) => {
     const state = await (await sessionState).json();
     expect(state.seconds_left, 'interview should be untimed').toBeNull();
     for (let i = 1; i <= QUESTIONS.Short; i++) {
-      await expect(page.getByText(`Question ${i} of ${QUESTIONS.Short}`)).toBeVisible();
+      await expect(page.locator('.qlabel', { hasText: `Question ${i} of ${QUESTIONS.Short}` })).toBeVisible();
       if (i === 2) {
         await page.getByRole('button', { name: 'Skip question' }).click();
       } else {

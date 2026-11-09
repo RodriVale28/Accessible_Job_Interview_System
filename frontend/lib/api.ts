@@ -1,7 +1,7 @@
 // Shared API helper. Everyone calls the FastAPI backend through this.
 // Requests go to /api/* on this site and are forwarded to the backend (next.config.mjs).
 import { authHeaders } from './user';
-import { loginRequired } from './supabase';
+import { loginRequired, supabase } from './supabase';
 import type {
   Difficulty, Duration, InterviewType, PracticeResult, Question, Results, Role, RoleMatch, SessionState, SessionSummary,
 } from './types';
@@ -24,9 +24,11 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
     throw new ApiError('Could not reach the server. Check your connection and try again.', 0);
   }
   if (res.status === 401 && loginRequired) {
-    // not signed in, or the login expired: come back here after logging in
+    // not signed in, or the login expired: come back here after logging in.
+    // Drop the stale local session first, or the login page would bounce straight back here.
+    await supabase?.auth.signOut({ scope: 'local' });
     // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- api() is not a component
-    window.location.assign(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+    window.location.assign(`/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`);
   }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {

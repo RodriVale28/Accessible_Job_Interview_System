@@ -3,7 +3,7 @@
 import { useEffect, useId, useRef, useSyncExternalStore } from 'react';
 import ReadAloud from './ReadAloud';
 import {
-  clearSettings, getServerSettings, getSettingsSnapshot, initSettings, loadAccountSettings, resetSettings, subscribeSettings, updateSettings,
+  getServerSettings, getSettingsSnapshot, initSettings, loadAccountSettings, resetSettings, subscribeSettings, updateSettings,
 } from '../lib/settings';
 import { supabase } from '../lib/supabase';
 
@@ -98,9 +98,9 @@ export function SettingsPanel() {
 
   useEffect(() => {
     const stopInit = initSettings();
-    // Any sign-out removes browser's saved settings,
+    // Settings are cleared by the Log out button (AccountMenu), not here: SIGNED_OUT also fires
+    // when a token refresh fails, and that must not wipe the user's choices.
     const auth = supabase?.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_OUT') clearSettings();
       if (event === 'SIGNED_IN') void loadAccountSettings(); // bring the account's settings back after login
     });
     return () => { stopInit(); auth?.data.subscription.unsubscribe(); };
