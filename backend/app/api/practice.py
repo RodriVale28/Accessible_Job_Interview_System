@@ -29,7 +29,7 @@ class PracticeAnswerRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     question_id: int = Field(ge=1)
-    text: str
+    text: str = Field(max_length=5000)  # same cap as interview answers
 
 
 class PracticeResult(BaseModel):
@@ -161,6 +161,7 @@ def practice_answer(
     repo=Depends(get_repo),
 ):
     """Grade an individual answer and save the practice attempt."""
+    text = request.text.strip()  # like interview answers: whitespace-only is a blank answer
     try:
         question = repo.get_question(request.question_id)
 
@@ -179,16 +180,16 @@ def practice_answer(
             evaluate = None
 
         if evaluate is not None:
-            grade = evaluate(question, request.text)
+            grade = evaluate(question, text)
         else:
-            grade = _fallback_grade(question, request.text)
+            grade = _fallback_grade(question, text)
 
-        feedback = feedback_for_answer(grade, request.text)
+        feedback = feedback_for_answer(grade, text)
 
         result = PracticeResult(
             question_id=request.question_id,
             prompt=question["prompt"],
-            answer=request.text,
+            answer=text,
             score=grade.score,
             correct=grade.correct,
             criteria_met=grade.criteria_met,
@@ -202,7 +203,7 @@ def practice_answer(
         repo.save_practice_attempt(
             uid,
             request.question_id,
-            request.text,
+            text,
             result.model_dump(),
         )
 

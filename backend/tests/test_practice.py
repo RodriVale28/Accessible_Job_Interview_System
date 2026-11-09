@@ -127,3 +127,19 @@ def test_practice_requires_authentication(client, monkeypatch):
 
     assert question.status_code == 401
     assert answer.status_code == 401
+
+
+def test_practice_answer_over_5000_characters_is_rejected(client, user, repo):
+    """Same cap as interview answers."""
+    qid = next(iter(repo.questions))
+    r = client.post("/api/practice/answer", headers=user, json={"question_id": qid, "text": "x" * 5001})
+    assert r.status_code == 422
+    r = client.post("/api/practice/answer", headers=user, json={"question_id": qid, "text": "x" * 5000})
+    assert r.status_code == 200, r.text
+
+
+def test_whitespace_only_practice_answer_is_a_blank_answer(client, user, repo):
+    qid = next(iter(repo.questions))
+    r = client.post("/api/practice/answer", headers=user, json={"question_id": qid, "text": "   \n "})
+    assert r.status_code == 200, r.text
+    assert r.json()["answer"] == "" and r.json()["score"] == 0

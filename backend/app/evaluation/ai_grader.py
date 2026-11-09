@@ -5,8 +5,8 @@ reply in code before trusting it:
 
 - Locked reply shape: {"criteria": [{"number": 1, "met": true, "quote": "...", "reason": "..."}]},
   one entry per criterion. Anything missing, duplicated or malformed -> None (keyword grader).
-- A criterion counts as met only if the quote really appears in the answer (ignoring case
-  and extra spaces). No quote, or an invented quote -> missed.
+- A criterion counts as met only if the quote (3+ words) really appears in the answer (ignoring
+  case and extra spaces). No quote, or an invented quote -> missed.
 
 Only the question, the criteria texts and the answer text are sent. Never names, emails or ids.
 """
@@ -49,9 +49,12 @@ def _normalize(text: str) -> str:
 
 
 def quote_in_answer(quote: str, answer: str) -> bool:
-    """True when the quote really appears in the answer (ignoring case and extra spaces)."""
-    q = _normalize(quote or "")
-    return bool(q) and q in _normalize(answer)
+    """True when the quote really appears in the answer (ignoring case and extra spaces).
+
+    A quote must be at least 3 words (or the whole answer, if the answer is shorter), so a
+    single common word cannot count as evidence."""
+    q, a = _normalize(quote or ""), _normalize(answer)
+    return bool(q) and q in a and len(q.split()) >= min(3, len(a.split()))
 
 
 def build_user_message(question: dict, criteria_texts: list[str], answer_text: str) -> str:

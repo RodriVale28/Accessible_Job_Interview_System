@@ -18,7 +18,7 @@ class RoleOut(BaseModel):
 
 class MatchRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
-    job_title: str = Field(min_length=1, max_length=100)
+    job_title: str = Field(min_length=1, max_length=120)
 
 
 class RoleMatchOut(BaseModel):

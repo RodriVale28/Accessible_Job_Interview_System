@@ -146,6 +146,7 @@ def session_state(repo, s: dict) -> SessionState:
     },
 )
 def start_session(body: SessionCreate, uid: str = Depends(user_id), repo=Depends(get_repo)) -> SessionState:
+    session_id = None
     try:
         if body.role_id is not None and repo.get_role(body.role_id) is None:
             raise HTTPException(
@@ -158,15 +159,23 @@ def start_session(body: SessionCreate, uid: str = Depends(user_id), repo=Depends
         )
         qs.next_question(session_id, body.difficulty.value, repo=repo,
                          role_id=body.role_id, interview_type=body.interview_type.value)
-        s = repo.get_session(session_id, uid)
-    except qs.NoQuestionAvailable as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
-    except PersistenceError:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Could not save the interview session. Please try again.",
-        )
-    return session_state(repo, s)
+        return session_state(repo, repo.get_session(session_id, uid))
+    except HTTPException:
+        raise
+    except Exception as exc:
+        if session_id is not None:  # never leave an empty in-progress session behind
+            try:
+                repo.discard_session(session_id, uid)
+            except Exception:
+                pass
+        if isinstance(exc, qs.NoQuestionAvailable):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+        if isinstance(exc, PersistenceError):
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Could not save the interview session. Please try again.",
+            )
+        raise
 
 
 @router.get("/sessions/{session_id}", response_model=SessionState, summary="Load an interview session")

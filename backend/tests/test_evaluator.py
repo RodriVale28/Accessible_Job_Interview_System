@@ -413,3 +413,16 @@ def test_blank_answer_through_the_api_never_calls_the_ai(client, user, start, fa
                     json={"question_id": s["question"]["id"], "text": "   "})
     assert r.status_code == 200 and r.json()["blank"] is True
     assert fake_ai.calls == []
+
+
+def test_one_word_quote_is_not_evidence(fake_ai):
+    answer = "An array stores elements in contiguous memory. Linked lists use nodes and pointers."
+    fake_ai.reply = reply((True, "array"), (True, "Linked lists use nodes"))
+    result = evaluate(question(ARRAY), answer)
+    assert result.criteria_met == [PROVISIONAL_CRITERIA[ARRAY][1]]
+
+
+def test_short_answer_can_be_quoted_whole():
+    assert ai_grader.quote_in_answer("Use arrays", "Use arrays")
+    assert ai_grader.quote_in_answer("arrays", "arrays")
+    assert not ai_grader.quote_in_answer("arrays", "Use arrays here")

@@ -16,7 +16,7 @@ from app.api.deps import load_session, time_is_up, user_id
 from app.api.sessions import QuestionOut
 from app.evaluation.feedback_rules import feedback_for_answer
 from app.evaluation.evaluator import evaluate
-from app.repository import AlreadyAnswered, PersistenceError, get_repo
+from app.repository import AlreadyAnswered, PersistenceError, SessionClosed, get_repo
 from app.services import question_service as qs
 
 router = APIRouter()
@@ -44,6 +44,8 @@ def submit_answer(session_id: int, body: AnswerIn, uid: str = Depends(user_id), 
         return _submit(repo, session_id, uid, body)
     except AlreadyAnswered:
         raise HTTPException(status_code=409, detail="This question was already answered.")
+    except SessionClosed:
+        raise HTTPException(status_code=409, detail="This interview already ended, so that answer was not saved.")
     except PersistenceError:
         raise HTTPException(status_code=503, detail="Could not save your answer. Please retry.")
 

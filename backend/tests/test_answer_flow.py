@@ -17,6 +17,7 @@ import uuid
 
 import pytest
 
+from app.api import answers as answers_module
 from app.repository import AlreadyAnswered, PersistenceError
 
 
@@ -443,3 +444,23 @@ def test_failed_next_question_is_asked_on_reload(client, user, start, repo, monk
     assert state["question"] is not None
     assert state["question"]["id"] != session["question"]["id"]
     assert state["q_index"] == 2
+
+
+def test_answer_graded_while_interview_ends_is_not_saved(client, user, start, repo, monkeypatch):
+    """The timer ends during AI grading: /complete wins, the late answer is refused with a 409."""
+    session = start()
+    sid = session["session_id"]
+    real = answers_module.evaluate
+
+    def slow_evaluate(question, text):
+        assert client.post(f"/api/sessions/{sid}/complete", headers=user).status_code == 200
+        return real(question, text)
+
+    monkeypatch.setattr(answers_module, "evaluate", slow_evaluate)
+    response = submit(client, user, session)
+
+    assert response.status_code == 409, response.text
+    assert "ended" in response.json()["detail"]
+    assert repo.get_responses(sid) == {}
+    assert len(repo.asked_questions(sid)) == 1  # no extra question was added
+    assert client.get(f"/api/sessions/{sid}/results", headers=user).json()["overall_score"] == 0
