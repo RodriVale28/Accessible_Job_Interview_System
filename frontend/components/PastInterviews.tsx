@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { discardSession, listSessions } from '../lib/api';
 import { supabase } from '../lib/supabase';
-import type { SessionSummary } from '../lib/types';
+import { DIFFICULTY_LABEL, type SessionSummary } from '../lib/types';
 
 export function PastInterviews() {
   const [rows, setRows] = useState<SessionSummary[] | null>(null);
@@ -59,7 +59,7 @@ export function PastInterviews() {
                 <h3>{done
                   ? <Link href={`/results/${s.session_id}`}>{s.job_title}</Link>
                   : (s.role_name || s.job_title)}</h3>
-                <p className="muted">{s.role_name || s.job_title} · {s.interview_type} · {s.difficulty} · {s.timed ? `${s.duration_min} min` : 'Untimed'} · {when} · {done ? `Score ${s.overall_score ?? 0}` : 'In progress'}</p>
+                <p className="muted">{s.role_name || s.job_title} · {s.interview_type} · {DIFFICULTY_LABEL[s.difficulty]} · {s.timed ? `${s.duration_min} min` : 'Untimed'} · {when} · {done ? `Score ${s.overall_score ?? 0}` : 'In progress'}</p>
               </div>
               <div className="past-actions">
                 {done ? <Link className="btn primary" href={`/results/${s.session_id}`}>View results</Link> : <>

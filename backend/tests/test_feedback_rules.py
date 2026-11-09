@@ -43,7 +43,7 @@ def test_missing_keywords_become_improvements():
     grade = FakeScore(["index"], ["join"], 50, False)
     result = feedback_for_answer(grade, "index only")
 
-    assert result["improvements"] == "Work on these areas: join."
+    assert result["improvements"] == "Points to add: join."
     assert set(result) == {"strengths", "improvements"}
 
 
@@ -160,7 +160,7 @@ def test_realistic_linked_list_criterion():
 
     assert "Try mentioning Explains that" not in result["improvements"]
     assert ".." not in result["improvements"]
-    assert "Work on these areas:" in result["improvements"]
+    assert "Points to add:" in result["improvements"]
 
 
 def test_sprint2_blank_answer_scores_zero():
@@ -235,7 +235,7 @@ def test_improvements_capped_at_two_with_a_skip():
     result = session_feedback(grades, answers)
 
     assert result["improvements"].count("You skipped 1 question") == 1
-    assert result["improvements"].count("Work on these areas") == 1
+    assert result["improvements"].count("Points to add") == 1
 
 
 def test_improvements_capped_at_two_without_skips():
@@ -243,7 +243,7 @@ def test_improvements_capped_at_two_without_skips():
 
     result = session_feedback(grades, ["one", "two", "three", "four"])
 
-    assert result["improvements"].count("Work on these areas") == 2
+    assert result["improvements"].count("Points to add") == 2
 
 
 def test_behavioral_strengths_name_star_parts_without_repeating_the_answer():
@@ -267,3 +267,24 @@ def test_evidence_inside_a_longer_quote_is_not_repeated():
     result = feedback_for_answer(grade, "Nodes and pointers link items.")
 
     assert result["strengths"].count("nodes and pointers") == 1
+
+
+def test_missing_star_parts_are_named_not_quoted():
+    grade = FakeGradeResult(
+        score=50,
+        correct=False,
+        criteria_met=["Situation: Sets the scene", "Action: Says what they did"],
+        criteria_missed=["Task: Names their goal", "Result: Explains how it ended"],
+    )
+
+    result = feedback_for_answer(grade, "We had a deadline, so I split the work.")
+
+    assert result["improvements"] == "Add the Task and Result parts of STAR to your answer."
+
+
+def test_session_strengths_capped_at_two():
+    grades = [FakeScore([f"point {i}"], [], 100, True) for i in range(4)]
+
+    result = session_feedback(grades, ["one", "two", "three", "four"])
+
+    assert result["strengths"].count("Your answer") == 2

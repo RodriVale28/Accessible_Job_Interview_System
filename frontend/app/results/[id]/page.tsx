@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { ApiError, getResults, startSession } from '../../../lib/api';
-import type { AnswerResult, InterviewType, Results } from '../../../lib/types';
+import { DIFFICULTY_LABEL, type AnswerResult, type InterviewType, type Results } from '../../../lib/types';
 
 type ResultLevel = 'Strong' | 'Getting there' | 'Room to grow';
 
@@ -111,7 +111,7 @@ function AnswerFeedback({ answer }: { answer: AnswerResult }) {
 
         <div className="grow">
           <div className="hd">
-            {answered ? `${level} · ${answer.score}/100` : 'Skipped'} ·{' '}
+            {answered ? `${answer.score}/100` : 'Skipped'} ·{' '}
             {answer.category}
           </div>
 
@@ -253,7 +253,7 @@ function AnswerFeedback({ answer }: { answer: AnswerResult }) {
         </p>
       )}
 
-      {answer.grader === 'keyword' && (
+      {answered && answer.grader === 'keyword' && (
         <p className="muted">
           Basic grading was used for this answer.
         </p>
@@ -434,7 +434,7 @@ export default function ResultsPage() {
 
             <p className="muted">
               {results.job_title} · {results.interview_type} ·{' '}
-              {results.difficulty} · {results.timed ? `${results.duration_min} min` : 'Untimed'}
+              {DIFFICULTY_LABEL[results.difficulty]} · {results.timed ? `${results.duration_min} min` : 'Untimed'}
             </p>
 
             <p className="muted">
@@ -502,7 +502,7 @@ export default function ResultsPage() {
 
         {notReached > 0 && (
           <p className="muted" style={{ marginTop: 12 }}>
-            {notReached} questions were not reached before the interview
+            {notReached} {notReached === 1 ? 'question was' : 'questions were'} not reached before the interview
             ended. They count as 0 in the overall score.
           </p>
         )}

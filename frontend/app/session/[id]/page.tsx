@@ -228,7 +228,7 @@ export default function SessionPage() {
               <span className="spacer" />
               <Link className="guide-btn" href="/">Leave and resume later</Link>
               <button className="guide-btn" type="button" disabled={busy} onClick={() => void send('')}>Skip question</button>
-              <button className="guide-btn end" type="button" disabled={busy} onClick={() => void finish()}>End now</button>
+              <button className="guide-btn end" type="button" disabled={busy} onClick={() => { if (window.confirm('End the interview now? Questions you have not answered will count as 0.')) void finish(); }}>End now</button>
             </div>
             <div className="composer">
               <div className="inpwrap">

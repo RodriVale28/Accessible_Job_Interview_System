@@ -28,6 +28,7 @@ const GOOD_ANSWER = 'It uses memory and a pointer to each node; push and pop wor
 // Login builds (NEXT_PUBLIC_SUPABASE_* set, e.g. the Render site) need a test account:
 // set E2E_EMAIL and E2E_PASSWORD. Guest-mode builds (local, CI) skip this.
 test.beforeEach(async ({ page }) => {
+  page.on('dialog', (d) => void d.accept()); // "End now" asks to confirm
   const email = process.env.E2E_EMAIL, password = process.env.E2E_PASSWORD;
   if (!email || !password) return;
   await page.goto('/login');
