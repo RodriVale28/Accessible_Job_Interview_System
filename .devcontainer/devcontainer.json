@@ -1,0 +1,17 @@
+{
+  "name": "Interview Studio",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": { "version": "20" }
+  },
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+  "postAttachCommand": "bash .devcontainer/start.sh",
+  "forwardPorts": [3000, 8000],
+  "portsAttributes": {
+    "3000": { "label": "Interview Studio (website)", "onAutoForward": "openBrowser" },
+    "8000": { "label": "API (FastAPI)", "onAutoForward": "silent" }
+  },
+  "customizations": {
+    "vscode": { "extensions": ["ms-python.python", "dbaeumer.vscode-eslint"] }
+  }
+}
