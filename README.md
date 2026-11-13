@@ -12,19 +12,6 @@ render.yaml         Render services (S1-4.3)
 .github/workflows/  CI (S1-X.1)
 ```
 
-## Run from GitHub (Codespaces) - no Render, no setup
-
-1. On this repo's GitHub page: green **Code** button -> **Codespaces** -> **Create codespace on main**.
-2. Wait 3-5 minutes the first time (it installs everything and builds the site).
-3. The website opens on port **3000** (or open the **PORTS** tab and click 3000).
-
-Guest mode, in-memory data (resets when the codespace stops), AI off.
-After `git pull`, rerun with `pkill -f next; bash .devcontainer/start.sh`.
-Stop the codespace when done (free hours are limited).
-
-Render's free plan sleeps after ~15 minutes idle and takes ~50 s to wake, so the first request
-after a break often times out. Use the codespace for demos and testing.
-
 ## Run locally
 
 Backend (from `backend/`):
